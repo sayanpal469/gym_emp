@@ -22,6 +22,9 @@ export const APIEndpoints = {
   subscriptionOverview: '/admin_subscription_overview.php',
   getTodayAttendanceList: '/admin_get_today_attendance.php',
   revenueChart: '/admin_revenue_chart.php',
+  allActiveMemberList: '/admin_active_member_list.php',
+  getAllOffers: '/offer.php',
+  uploadOffer: '/admin_offer_upload.php'
 
 
 

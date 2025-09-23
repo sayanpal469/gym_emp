@@ -7,7 +7,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Image,
     Dimensions,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -17,28 +16,47 @@ import { useNavigation } from '@react-navigation/native';
 const screenWidth = Dimensions.get('window').width;
 
 interface Subscription {
-    id: number;
-    name: string;
-    date: string;
-    amount: string;
-    status: 'active' | 'upcoming' | 'inactive';
+    package_name: string;
+    start_date: string;
+    end_date: string;
+    months: string;
+    ext_month: string;
+    remaining_days: number | null;
 }
 
-// Mock data for subscriptions
-const mockSubscriptions: Subscription[] = [
-    { id: 1, name: 'Premium Membership', date: '2023-05-15', amount: '$99.99', status: 'active' },
-    { id: 2, name: 'Yoga Classes', date: '2023-06-20', amount: '$49.99', status: 'upcoming' },
-    { id: 3, name: 'Personal Training', date: '2023-03-10', amount: '$199.99', status: 'inactive' },
-    { id: 4, name: 'Swimming Pool Access', date: '2023-05-01', amount: '$29.99', status: 'active' },
-    { id: 5, name: 'Sauna Access', date: '2023-06-01', amount: '$19.99', status: 'upcoming' },
-];
+interface Member {
+    member_id: string;
+    member_name: string;
+    email: string | null;
+    contact: string;
+    gender: string;
+    branch_name: string | null;
+    subscription: Subscription;
+    avatar?: string;
+}
 
 const MembersDetails = ({ route }) => {
     const navigation = useNavigation();
-    const { member } = route.params;
+    const { member }: { member: Member } = route.params;
     const [activeTab, setActiveTab] = useState<'active' | 'upcoming' | 'inactive'>('active');
 
-    const filteredSubscriptions = mockSubscriptions.filter(sub => sub.status === activeTab);
+    const getInitials = (name: string) => {
+        if (!name) return 'NA';
+        const names = name.trim().split(' ');
+        if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
+        return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    };
+
+    const formatPhoneNumber = (phone: string) => {
+        if (!phone) return 'Not provided';
+        return phone;
+    };
+
+    const getSubscriptionStatus = (subscription: Subscription) => {
+        if (subscription.end_date === 'Lifetime') return 'active';
+        if (!subscription.remaining_days) return 'inactive';
+        return subscription.remaining_days > 30 ? 'active' : 'upcoming';
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -58,6 +76,26 @@ const MembersDetails = ({ route }) => {
         }
     };
 
+    const formatDate = (dateString: string) => {
+        if (dateString === 'Lifetime') return 'Lifetime';
+        if (!dateString) return 'Not specified';
+        
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return dateString;
+        }
+    };
+
+    // Filter subscriptions based on active tab
+    const currentSubscriptionStatus = getSubscriptionStatus(member.subscription);
+    const showCurrentSubscription = currentSubscriptionStatus === activeTab;
+
     return (
         <SafeAreaView style={styles.safeArea}>
             {/* Header */}
@@ -76,27 +114,39 @@ const MembersDetails = ({ route }) => {
                 {/* Member Info Card */}
                 <View style={styles.memberCard}>
                     <View style={styles.avatarContainer}>
-                        {member.avatar ? (
-                            <Image source={{ uri: member.avatar }} style={styles.avatar} />
-                        ) : (
-                            <View style={styles.avatarPlaceholder}>
-                                <Text style={styles.avatarText}>
-                                    {member.name.split(' ').map(n => n[0]).join('')}
-                                </Text>
-                            </View>
-                        )}
+                        <View style={styles.avatarPlaceholder}>
+                            <Text style={styles.avatarText}>
+                                {getInitials(member.member_name)}
+                            </Text>
+                        </View>
                     </View>
 
-                    <Text style={styles.memberName}>{member.name}</Text>
+                    <Text style={styles.memberName}>{member.member_name}</Text>
 
                     <View style={styles.infoRow}>
                         <Ionicons name="business-outline" size={18} color="#075E4D" />
-                        <Text style={styles.infoText}>{member.branch}</Text>
+                        <Text style={styles.infoText}>
+                            {member.branch_name || 'No branch assigned'}
+                        </Text>
                     </View>
 
                     <View style={styles.infoRow}>
                         <Ionicons name="call-outline" size={18} color="#075E4D" />
-                        <Text style={styles.infoText}>{member.phone}</Text>
+                        <Text style={styles.infoText}>{formatPhoneNumber(member.contact)}</Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                        <Ionicons name="mail-outline" size={18} color="#075E4D" />
+                        <Text style={styles.infoText}>
+                            {member.email || 'No email provided'}
+                        </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                        <Ionicons name="person-outline" size={18} color="#075E4D" />
+                        <Text style={styles.infoText}>
+                            {member.gender || 'Not specified'}
+                        </Text>
                     </View>
                 </View>
 
@@ -133,38 +183,64 @@ const MembersDetails = ({ route }) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Subscription List */}
+                {/* Subscription Details */}
                 <View style={styles.subscriptionsContainer}>
-                    {filteredSubscriptions.length === 0 ? (
+                    {showCurrentSubscription ? (
+                        <View style={styles.subscriptionCard}>
+                            <View style={styles.subscriptionHeader}>
+                                <Text style={styles.subscriptionName}>
+                                    {member.subscription.package_name}
+                                </Text>
+                                <View style={[
+                                    styles.statusBadge, 
+                                    { backgroundColor: getStatusColor(currentSubscriptionStatus) }
+                                ]}>
+                                    <Text style={styles.statusText}>
+                                        {getStatusText(currentSubscriptionStatus)}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.subscriptionDetails}>
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Start Date</Text>
+                                    <Text style={styles.detailValue}>
+                                        {formatDate(member.subscription.start_date)}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>End Date</Text>
+                                    <Text style={styles.detailValue}>
+                                        {formatDate(member.subscription.end_date)}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {member.subscription.remaining_days !== null && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Remaining Days</Text>
+                                    <Text style={styles.detailValue}>
+                                        {member.subscription.remaining_days} days
+                                    </Text>
+                                </View>
+                            )}
+
+                            <View style={styles.detailItem}>
+                                <Text style={styles.detailLabel}>Duration</Text>
+                                <Text style={styles.detailValue}>
+                                    {member.subscription.months || 
+                                     (member.subscription.end_date === 'Lifetime' ? 'Lifetime' : 'Not specified')}
+                                </Text>
+                            </View>
+                        </View>
+                    ) : (
                         <View style={styles.emptySubscriptions}>
                             <Ionicons name="document-text-outline" size={48} color="#ccc" />
                             <Text style={styles.emptySubscriptionsText}>
                                 No {getStatusText(activeTab).toLowerCase()} subscriptions
                             </Text>
                         </View>
-                    ) : (
-                        filteredSubscriptions.map((subscription) => (
-                            <View key={subscription.id} style={styles.subscriptionCard}>
-                                <View style={styles.subscriptionHeader}>
-                                    <Text style={styles.subscriptionName}>{subscription.name}</Text>
-                                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(subscription.status) }]}>
-                                        <Text style={styles.statusText}>{getStatusText(subscription.status)}</Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.subscriptionDetails}>
-                                    <View style={styles.detailItem}>
-                                        <Text style={styles.detailLabel}>Date</Text>
-                                        <Text style={styles.detailValue}>{subscription.date}</Text>
-                                    </View>
-
-                                    <View style={styles.detailItem}>
-                                        <Text style={styles.detailLabel}>Amount</Text>
-                                        <Text style={styles.detailValue}>{subscription.amount}</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        ))
                     )}
                 </View>
             </ScrollView>
@@ -221,13 +297,6 @@ const styles = StyleSheet.create({
     avatarContainer: {
         marginBottom: 15,
     },
-    avatar: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        borderWidth: 3,
-        borderColor: '#075E4D',
-    },
     avatarPlaceholder: {
         width: 90,
         height: 90,
@@ -254,7 +323,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 10,
         width: '100%',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         backgroundColor: '#f8f9fa',
         paddingVertical: 8,
         paddingHorizontal: 15,
@@ -348,9 +417,11 @@ const styles = StyleSheet.create({
     subscriptionDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginBottom: 10,
     },
     detailItem: {
         flex: 1,
+        marginBottom: 10,
     },
     detailLabel: {
         fontSize: 13,

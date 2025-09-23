@@ -23,11 +23,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useDispatch } from 'react-redux';
-import { logout } from '../../redux/slices/authSlice';
+import { logout } from '../../../redux/slices/authSlice';
 
 const { height } = Dimensions.get('window');
 
-const MenuScreen = ({ navigation }: any) => {
+const ProfileScreen = ({ navigation }: any) => {
     const dispatch = useDispatch();
     const [userData, setUserData] = useState({
         name: 'John Doe',
@@ -545,4 +545,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default MenuScreen;
+export default ProfileScreen;

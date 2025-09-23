@@ -18,6 +18,13 @@ import ResetPassword from './screens/ResetPassword';
 import MemberDetailsScreen from './screens/Admin/StuffDetailsScreen';
 import StuffDetailsScreen from './screens/Admin/StuffDetailsScreen';
 import MembersDetails from './screens/Admin/MembersDetails';
+import ProfileScreen from './screens/Admin/Menu/ProfileScreen';
+import BranchesScreen from './screens/Admin/Menu/BranchesScreen';
+import LeaveApplicationScreen from './screens/Admin/Menu/LeaveApplicationScreen';
+import PromotionScreen from './screens/Admin/Menu/PromotionScreen';
+import PromotionDetailScreen from './screens/Admin/Menu/PromotionDetailScreen';
+import AddOfferForm from './screens/Admin/Menu/AddOfferForm';
+import TransactionDetailScreen from './screens/Admin/TransactionDetailScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -57,7 +64,18 @@ const Routes = () => {
           name="MembersDetails"
           component={MembersDetails}
         />
+        <Stack.Screen
+          name="TransactionDetail"
+          component={TransactionDetailScreen}
+          options={{ headerShown: false }}
+        />
 
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Branches" component={BranchesScreen} />
+        <Stack.Screen name="LeaveApplication" component={LeaveApplicationScreen} />
+        <Stack.Screen name="Promotion" component={PromotionScreen} />
+        <Stack.Screen name="PromotionDetail" component={PromotionDetailScreen} />
+        <Stack.Screen name="AddOfferForm" component={AddOfferForm} />
       </Stack.Navigator>
     </NavigationContainer>
   );

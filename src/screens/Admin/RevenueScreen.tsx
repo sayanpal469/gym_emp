@@ -83,7 +83,7 @@ const calculateMetrics = (data: RevenueDataPoint[]) => {
   const average = total / data.length;
   const highest = Math.max(...data.map(item => item.amount));
   const lowest = Math.min(...data.map(item => item.amount));
-  
+
   return { total, average, highest, lowest };
 };
 
@@ -153,7 +153,7 @@ const RevenueScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
@@ -178,7 +178,7 @@ const RevenueScreen = ({ navigation }: any) => {
       </View>
 
       {/* Main Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.container}
         refreshControl={
           <RefreshControl
@@ -190,6 +190,27 @@ const RevenueScreen = ({ navigation }: any) => {
         }
         showsVerticalScrollIndicator={false}
       >
+
+
+        {/* Revenue Summary Cards */}
+        <View style={styles.summaryContainer}>
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#E8F5E9' }]}>
+              <MaterialCommunityIcons name="cash" size={24} color="#4CAF50" />
+            </View>
+            <Text style={styles.summaryValue}>{formatCurrency(metrics.total)}</Text>
+            <Text style={styles.summaryLabel}>Previous Month</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#E3F2FD' }]}>
+              <MaterialCommunityIcons name="chart-line" size={24} color="#2196F3" />
+            </View>
+            <Text style={styles.summaryValue}>{formatCurrency(metrics.average)}</Text>
+            <Text style={styles.summaryLabel}>This Month</Text>
+          </View>
+        </View>
+
         {/* Period Selector */}
         <View style={styles.periodSelector}>
           <TouchableOpacity
@@ -236,25 +257,6 @@ const RevenueScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* Revenue Summary Cards */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#E8F5E9' }]}>
-              <MaterialCommunityIcons name="cash" size={24} color="#4CAF50" />
-            </View>
-            <Text style={styles.summaryValue}>{formatCurrency(metrics.total)}</Text>
-            <Text style={styles.summaryLabel}>Total Revenue</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#E3F2FD' }]}>
-              <MaterialCommunityIcons name="chart-line" size={24} color="#2196F3" />
-            </View>
-            <Text style={styles.summaryValue}>{formatCurrency(metrics.average)}</Text>
-            <Text style={styles.summaryLabel}>Average</Text>
-          </View>
-        </View>
-
         {/* Revenue Chart */}
         <View style={styles.chartContainer}>
           <View style={styles.chartHeader}>
@@ -293,30 +295,8 @@ const RevenueScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Additional Metrics */}
+
         <View style={styles.metricsContainer}>
-          <Text style={styles.sectionTitle}>Performance Metrics</Text>
-          
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricCard}>
-              <View style={styles.metricHeader}>
-                <MaterialCommunityIcons name="trending-up" size={20} color="#4CAF50" />
-                <Text style={styles.metricTitle}>Highest</Text>
-              </View>
-              <Text style={styles.metricValue}>{formatCurrency(metrics.highest)}</Text>
-              <Text style={styles.metricSubtitle}>Peak revenue</Text>
-            </View>
-
-            <View style={styles.metricCard}>
-              <View style={styles.metricHeader}>
-                <MaterialCommunityIcons name="trending-down" size={20} color="#F44336" />
-                <Text style={styles.metricTitle}>Lowest</Text>
-              </View>
-              <Text style={styles.metricValue}>{formatCurrency(metrics.lowest)}</Text>
-              <Text style={styles.metricSubtitle}>Lowest revenue</Text>
-            </View>
-          </View>
-
           {/* Projection Card */}
           <View style={styles.projectionCard}>
             <View style={styles.projectionHeader}>
@@ -331,12 +311,60 @@ const RevenueScreen = ({ navigation }: any) => {
           </View>
         </View>
 
+
+        {/* Additional Metrics */}
+        <View style={styles.metricsContainer}>
+          <Text style={styles.sectionTitle}>Performance Metrics</Text>
+
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <MaterialCommunityIcons name="trending-up" size={20} color="#4CAF50" />
+                <Text style={styles.metricTitle}>Highest</Text>
+              </View>
+              <Text style={styles.metricValue}>{formatCurrency(metrics.highest)}</Text>
+              <Text style={styles.metricSubtitle}>PT Renew</Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <MaterialCommunityIcons name="trending-down" size={20} color="#F44336" />
+                <Text style={styles.metricTitle}>Lowest</Text>
+              </View>
+              <Text style={styles.metricValue}>{formatCurrency(metrics.lowest)}</Text>
+              <Text style={styles.metricSubtitle}>Membership Renew</Text>
+            </View>
+          </View>
+
+
+        </View>
+
         {/* Recent Transactions */}
         <View style={styles.transactionsContainer}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          
+
           {[1, 2, 3].map((item) => (
-            <View key={item} style={styles.transactionItem}>
+            <TouchableOpacity
+              key={item}
+              style={styles.transactionItem}
+              onPress={() => navigation.navigate('TransactionDetail', {
+                transaction: {
+                  id: item,
+                  name: `Customer Payment #${item}`,
+                  date: `Today, 10:3${item} AM`,
+                  amount: 1500 + item * 100,
+                  type: 'income',
+                  status: 'completed',
+                  customer: `Customer ${item}`,
+                  paymentMethod: 'Credit Card',
+                  transactionId: `TXN_00123${item}`,
+                  description: item === 1 ? 'Personal Training Session Renewal' :
+                    item === 2 ? 'Monthly Membership Fee' :
+                      'Additional Service Charge',
+                  category: item === 1 ? 'PT Renew' : item === 2 ? 'Membership' : 'Service',
+                }
+              })}
+            >
               <View style={styles.transactionIcon}>
                 <FontAwesome name="money-bill-wave" size={16} color="#4CAF50" />
               </View>
@@ -345,7 +373,7 @@ const RevenueScreen = ({ navigation }: any) => {
                 <Text style={styles.transactionDate}>Today, 10:3{item} AM</Text>
               </View>
               <Text style={styles.transactionAmount}>+₹{1500 + item * 100}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>

@@ -10,80 +10,87 @@ import {
     Dimensions,
     ActivityIndicator,
     RefreshControl,
-    Image,
+    Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { authClient } from '../../services/api.clients';
+import { APIEndpoints } from '../../services/api.endpoints';
+import { store } from '../../redux/store';
 
 const screenWidth = Dimensions.get('window').width;
 
+interface Subscription {
+    package_name: string;
+    start_date: string;
+    end_date: string;
+    months: string;
+    ext_month: string;
+    remaining_days: number | null;
+}
+
 interface Member {
-    id: number;
-    name: string;
-    branch: string;
-    phone: string;
+    member_id: string;
+    member_name: string;
+    email: string | null;
+    contact: string;
+    gender: string;
+    branch_name: string | null;
+    subscription: Subscription;
     avatar?: string;
 }
 
-// Mock data for members
-const mockMembers: Member[] = [
-    {
-        id: 1,
-        name: 'John Smith',
-        branch: 'Downtown Branch',
-        phone: '+1 (555) 123-4567',
-        avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-    },
-    {
-        id: 2,
-        name: 'Sarah Johnson',
-        branch: 'Westside Branch',
-        phone: '+1 (555) 234-5678',
-        avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-    },
-    {
-        id: 3,
-        name: 'Michael Brown',
-        branch: 'Uptown Branch',
-        phone: '+1 (555) 345-6789',
-    },
-    {
-        id: 4,
-        name: 'Emily Davis',
-        branch: 'Downtown Branch',
-        phone: '+1 (555) 456-7890',
-        avatar: 'https://randomuser.me/api/portraits/women/4.jpg',
-    },
-    {
-        id: 5,
-        name: 'Robert Wilson',
-        branch: 'Westside Branch',
-        phone: '+1 (555) 567-8901',
-    },
-    {
-        id: 6,
-        name: 'Jennifer Lee',
-        branch: 'Uptown Branch',
-        phone: '+1 (555) 678-9012',
-        avatar: 'https://randomuser.me/api/portraits/women/6.jpg',
-    },
-];
+interface ApiResponse {
+    status: string;
+    count: number;
+    data: Member[];
+}
 
 const MembersScreen = () => {
     const navigation = useNavigation();
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchMembers = async () => {
-        setLoading(true);
-        // Simulate API call with timeout
-        setTimeout(() => {
-            setMembers(mockMembers);
+        try {
+            setError(null);
+            const emp_id = store.getState().auth.user?.emp_id || 2; // Fallback to 2 if not available
+
+            const response = await authClient.post<ApiResponse>(
+                APIEndpoints.allActiveMemberList,
+                { emp_id }
+            );
+
+            if (response.data.status === 'success') {
+                setMembers(response.data.data);
+            } else {
+                throw new Error('Failed to fetch members');
+            }
+        } catch (error: any) {
+            console.error('Error fetching members:', error);
+
+            if (error.response?.data) {
+                // Handle API error responses
+                setError(error.response.data.message || 'Failed to fetch members');
+
+                if (error.response.status === 401) {
+                    Alert.alert('Error', 'Unauthorized access. Please check your permissions.');
+                } else if (error.response.data.message === 'Employee not found') {
+                    Alert.alert('Error', 'Employee not found or insufficient permissions.');
+                }
+            } else if (error.request) {
+                setError('Network error. Please check your connection.');
+            } else {
+                setError('Failed to fetch members. Please try again.');
+            }
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
+
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -97,6 +104,24 @@ const MembersScreen = () => {
 
     const navigateToMemberDetails = (member: Member) => {
         navigation.navigate('MembersDetails', { member });
+    };
+
+    const getInitials = (name: string) => {
+        if (!name) return 'NA';
+        const names = name.trim().split(' ');
+        if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
+        return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    };
+
+    const formatPhoneNumber = (phone: string) => {
+        if (!phone) return 'Not provided';
+        return phone;
+    };
+
+    const getSubscriptionStatus = (subscription: Subscription) => {
+        if (subscription.end_date === 'Lifetime') return 'active';
+        if (!subscription.remaining_days) return 'inactive';
+        return subscription.remaining_days > 30 ? 'active' : 'upcoming';
     };
 
     if (loading && members.length === 0) {
@@ -142,6 +167,14 @@ const MembersScreen = () => {
                 </TouchableOpacity>
             </View>
 
+            {/* Error Message */}
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Ionicons name="warning-outline" size={20} color="#FF6B6B" />
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
+
             {/* Members List */}
             <ScrollView
                 contentContainerStyle={styles.listContainer}
@@ -165,31 +198,40 @@ const MembersScreen = () => {
                 ) : (
                     members.map((member) => (
                         <TouchableOpacity
-                            key={member.id}
+                            key={member.member_id}
                             style={styles.memberCard}
                             onPress={() => navigateToMemberDetails(member)}
                         >
                             <View style={styles.avatarContainer}>
-                                {member.avatar ? (
-                                    <Image source={{ uri: member.avatar }} style={styles.avatar} />
-                                ) : (
-                                    <View style={styles.avatarPlaceholder}>
-                                        <Text style={styles.avatarText}>
-                                            {member.name.split(' ').map(n => n[0]).join('')}
-                                        </Text>
-                                    </View>
-                                )}
+                                <View style={styles.avatarPlaceholder}>
+                                    <Text style={styles.avatarText}>
+                                        {getInitials(member.member_name)}
+                                    </Text>
+                                </View>
                             </View>
 
                             <View style={styles.memberInfo}>
-                                <Text style={styles.memberName}>{member.name}</Text>
+                                <Text style={styles.memberName}>{member.member_name}</Text>
+
                                 <View style={styles.detailRow}>
                                     <Ionicons name="business-outline" size={14} color="#666" />
-                                    <Text style={styles.detailText}>{member.branch}</Text>
+                                    <Text style={styles.detailText}>
+                                        {member.branch_name || 'No branch assigned'}
+                                    </Text>
                                 </View>
+
                                 <View style={styles.detailRow}>
                                     <Ionicons name="call-outline" size={14} color="#666" />
-                                    <Text style={styles.detailText}>{member.phone}</Text>
+                                    <Text style={styles.detailText}>
+                                        {formatPhoneNumber(member.contact)}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.detailRow}>
+                                    <Ionicons name="card-outline" size={14} color="#666" />
+                                    <Text style={styles.detailText}>
+                                        {member.subscription.package_name}
+                                    </Text>
                                 </View>
                             </View>
 
@@ -248,11 +290,6 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         marginRight: 12,
-    },
-    avatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
     },
     avatarPlaceholder: {
         width: 60,
@@ -323,6 +360,23 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         fontWeight: '600',
+    },
+    errorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFEBEE',
+        padding: 12,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FF6B6B',
+    },
+    errorText: {
+        marginLeft: 8,
+        color: '#D32F2F',
+        fontSize: 14,
+        flex: 1,
     },
 });
 

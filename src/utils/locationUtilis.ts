@@ -9,46 +9,55 @@ const DUMMY_COORDINATES: Coordinates = {
   lng: 88.3065939,
 };
 
-export const getLocationManually = async (
-  useDummy: boolean = true,
-): Promise<Coordinates | null> => {
-  try {
-    if (!useDummy) {
-      console.log('Using dummy location');
-      // Alert.alert('Dummy Location', `Lat: ${DUMMY_COORDINATES.lat}\nLng: ${DUMMY_COORDINATES.lng}`);
-      return DUMMY_COORDINATES;
-    }
-
-    if (Platform.OS === 'android') {
+const requestLocationPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'android') {
+    try {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Location Permission',
-          message: 'App needs access to your location for attendance tracking.',
+          message: 'App needs access to your location for tracking.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
         },
       );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('Permission error:', err);
+      return false;
+    }
+  }
+  return true; // iOS handled via Info.plist
+};
 
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Permission Denied', 'Location permission is required.');
-        return null;
-      }
+export const getLocationManually = async (
+  useDummy: boolean = true,
+): Promise<Coordinates | null> => {
+  try {
+    if (useDummy) {
+      return DUMMY_COORDINATES;
     }
 
-    await promptForEnableLocationIfNeeded({ interval: 10000 });
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission Denied', 'Location permission is required.');
+      return null;
+    }
+
+    if (Platform.OS === 'android') {
+      await promptForEnableLocationIfNeeded({ interval: 10000 });
+    }
 
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
         position => {
           const { latitude, longitude } = position.coords;
-          const coords = { lat: latitude, lng: longitude };
-          // Alert.alert('Location Captured', `Lat: ${latitude}\nLng: ${longitude}`);
-          resolve(coords);
+          resolve({ lat: latitude, lng: longitude });
         },
         error => {
           console.error('Geolocation error:', error);
+
           if (error.code === 2) {
             Alert.alert(
               'Location Services Disabled',
@@ -59,9 +68,7 @@ export const getLocationManually = async (
                   text: 'Open Settings',
                   onPress: () => {
                     if (Platform.OS === 'android') {
-                      Linking.openURL(
-                        'android.settings.LOCATION_SOURCE_SETTINGS://',
-                      );
+                      Linking.openSettings();
                     } else {
                       Linking.openURL('app-settings:');
                     }
@@ -79,13 +86,13 @@ export const getLocationManually = async (
         },
         {
           enableHighAccuracy: true,
-          timeout: 20000,
+          timeout: 30000,
           maximumAge: 1000,
         },
       );
     });
   } catch (error) {
-    console.warn('GPS prompt failed:', error);
+    console.warn('Location fetch failed:', error);
     Alert.alert(
       'Enable Location Services',
       'Please turn on your GPS manually.',
