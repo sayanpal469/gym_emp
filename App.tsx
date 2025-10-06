@@ -9,13 +9,15 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { toastConfig } from './src/components/toastconfig';
 import Toast from 'react-native-toast-message';
 
-export const fontFamily = 'FontBueno'; 
+export const fontFamily = 'FontBueno';
 
 // Set default font for Text & TextInput
 (Text as any).defaultProps = {
   ...(Text as any).defaultProps,
   style: [{ fontFamily }],
 };
+
+// console.log("hello")
 
 (TextInput as any).defaultProps = {
   ...(TextInput as any).defaultProps,

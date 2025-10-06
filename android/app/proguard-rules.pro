@@ -8,3 +8,16 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+
+# Keep SMS Retriever classes
+-keep class me.furtado.smsretriever.** { *; }
+
+# Keep SafeAreaContext
+-keep class com.th3rdwave.safeareacontext.** { *; }
+
+# Keep Vector Icons
+-keep class com.oblador.vectoricons.** { *; }
+
+# Keep Navigation Bar Color
+-keep class com.thebylito.navigationbarcolor.** { *; }
