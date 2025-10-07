@@ -112,7 +112,13 @@ const Attendance = ({ navigation }: any) => {
       const result = await empAttendanceList();
 
       if (result.success && result.data) {
-        setAttendanceData(result.data.attendance);
+        const normalizedAttendance: AttendanceRecord[] =
+          (result.data.attendance ?? []).map((record: any) => ({
+            ...record,
+            attendanceStatus: record.attendanceStatus === 'Late' ? 'Late' : 'onTime',
+          }));
+
+        setAttendanceData(normalizedAttendance);
       } else {
         setAttendanceData([]);
         Toast.show({
@@ -293,8 +299,10 @@ const Attendance = ({ navigation }: any) => {
             />
           }
         >
-          {uniqueAttendanceDays.map((record, idx) => {
-            const statusConfig = getStatusConfig(record.attendanceStatus = 'onTime');
+          {uniqueAttendanceDays.map(record => {
+            const statusConfig = getStatusConfig(
+              record.attendanceStatus === 'Late' ? 'Late' : 'onTime'
+            );
 
             return (
               <View key={record.id} style={styles.listItem}>

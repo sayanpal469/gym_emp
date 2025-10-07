@@ -42,7 +42,7 @@ const AttendanceModal: React.FC<Props> = ({ visible, onClose }) => {
   const handleCheckLocation = async () => {
     try {
       setFetchingLocation(true);
-      const currentLoc = await getLocationManually(); // Set to false for dummy
+      const currentLoc = await getLocationManually(false);
       setFetchingLocation(false);
 
       if (!currentLoc) return;
