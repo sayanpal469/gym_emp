@@ -29,6 +29,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    if let rootView = window?.rootViewController?.view {
+      rootView.backgroundColor = UIColor(red: 7.0 / 255.0, green: 94.0 / 255.0, blue: 77.0 / 255.0, alpha: 1.0)
+    }
+
     return true
   }
 }
