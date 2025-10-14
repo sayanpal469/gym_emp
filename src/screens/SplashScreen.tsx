@@ -2,11 +2,13 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet, StatusBar, Image } from 'react-native';
 import changeNavigationBarColor from 'react-native-navigation-bar-color';
 
+
 const SplashScreen = () => {
 
   useEffect(() => {
-  changeNavigationBarColor('#075E4D', true); // true for light buttons/icons
-}, []);
+    changeNavigationBarColor('#075E4D', true); // true for light buttons/icons
+  }, []);
+
 
   return (
     <View style={styles.container}>
@@ -28,7 +30,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-  width: 270,
+    width: 270,
     height: 200,
   },
 });

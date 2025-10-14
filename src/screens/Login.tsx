@@ -12,6 +12,7 @@ import {
   Platform,
   StatusBar,
   Animated,
+  SafeAreaView,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Input from '../components/Input';
@@ -98,124 +99,130 @@ const Login = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-    >
-      <StatusBar backgroundColor="#084c3a" barStyle="light-content" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.container}>
-          {/* Animated Top Area */}
-          <Animated.View 
-            style={[
-              styles.topArea,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
-          >
-            {/* Decorative circles */}
-            <View style={[styles.decorativeCircle, styles.circle1]} />
-            <View style={[styles.decorativeCircle, styles.circle2]} />
-            <View style={[styles.decorativeCircle, styles.circle3]} />
-            
-            {/* Logo Container */}
-            <View style={styles.logoContainer}>
-               <Image
+        <StatusBar backgroundColor="#084c3a" barStyle="light-content" />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.container}>
+            {/* Animated Top Area */}
+            <Animated.View
+              style={[
+                styles.topArea,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }]
+                }
+              ]}
+            >
+              {/* Decorative circles */}
+              <View style={[styles.decorativeCircle, styles.circle1]} />
+              <View style={[styles.decorativeCircle, styles.circle2]} />
+              <View style={[styles.decorativeCircle, styles.circle3]} />
+
+              {/* Logo Container */}
+              <View style={styles.logoContainer}>
+                <Image
                   source={Logo}
                   style={styles.logo}
                   resizeMode="contain"
                 />
-            </View>
-          </Animated.View>
-
-          {/* Centered Form Container */}
-          <Animated.View 
-            style={[
-              styles.centerContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
-          >
-            <View style={styles.contentContainer}>
-              <Text style={styles.title}>LET'S SIGN YOU IN</Text>
-              <Text style={styles.subtitle}>Hello there, sign in to continue</Text>
-
-              <View style={styles.formContainer}>
-                <Input
-                  label="Phone Number"
-                  value={phone}
-                  onChangeText={(text) => {
-                    const cleaned = text.replace(/[^0-9]/g, '');
-                    if (cleaned.length <= 10) {
-                      setPhone(cleaned);
-                    }
-                  }}
-                  keyboardType="phone-pad"
-                  autoCapitalize="none"
-                  containerStyle={styles.inputContainer}
-                />
-
-                <Input
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={hidePassword}
-                  rightIcon={
-                    <TouchableOpacity onPress={() => setHidePassword(!hidePassword)}>
-                      <MaterialCommunityIcons
-                        name={hidePassword ? 'eye-off' : 'eye'}
-                        size={20}
-                        color="#9ca3af"
-                      />
-                    </TouchableOpacity>
-                  }
-                  containerStyle={styles.inputContainer}
-                />
-
-                <TouchableOpacity 
-                  style={styles.forgotContainer}
-                  onPress={() => navigation.navigate('ForgotPassword')}
-                >
-                  <Text style={styles.forgotText}>Forgot Password?</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.signInButton, loading && styles.signInButtonDisabled]} 
-                  onPress={handleSignIn}
-                  disabled={loading}
-                >
-                  <Text style={styles.signInText}>
-                    {loading ? 'PLEASE WAIT...' : 'SIGN IN'}
-                  </Text>
-                  <View style={styles.arrowContainer}>
-                    <MaterialCommunityIcons name="arrow-right" size={20} color="#084c3a" />
-                  </View>
-                </TouchableOpacity>
               </View>
-            </View>
-          </Animated.View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            </Animated.View>
+
+            {/* Centered Form Container */}
+            <Animated.View
+              style={[
+                styles.centerContainer,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }]
+                }
+              ]}
+            >
+              <View style={styles.contentContainer}>
+                <Text style={styles.title}>LET'S SIGN YOU IN</Text>
+                <Text style={styles.subtitle}>Hello there, sign in to continue</Text>
+
+                <View style={styles.formContainer}>
+                  <Input
+                    label="Phone Number"
+                    value={phone}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9]/g, '');
+                      if (cleaned.length <= 10) {
+                        setPhone(cleaned);
+                      }
+                    }}
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  <Input
+                    label="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={hidePassword}
+                    rightIcon={
+                      <TouchableOpacity onPress={() => setHidePassword(!hidePassword)}>
+                        <MaterialCommunityIcons
+                          name={hidePassword ? 'eye-off' : 'eye'}
+                          size={20}
+                          color="#9ca3af"
+                        />
+                      </TouchableOpacity>
+                    }
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.forgotContainer}
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                  >
+                    <Text style={styles.forgotText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.signInButton, loading && styles.signInButtonDisabled]}
+                    onPress={handleSignIn}
+                    disabled={loading}
+                  >
+                    <Text style={styles.signInText}>
+                      {loading ? 'PLEASE WAIT...' : 'SIGN IN'}
+                    </Text>
+                    <View style={styles.arrowContainer}>
+                      <MaterialCommunityIcons name="arrow-right" size={20} color="#084c3a" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 export default Login;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#084c3a',
+  },
   scrollContent: {
     flexGrow: 1,
     backgroundColor: '#f8fafc',
-    minHeight: height,
   },
   container: {
     flex: 1,
@@ -223,11 +230,12 @@ const styles = StyleSheet.create({
   },
   topArea: {
     backgroundColor: '#084c3a',
-    height: height * 0.45,
+    height: height * 0.4, // Reduced height to accommodate safe area
     position: 'relative',
     overflow: 'hidden',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight, // Add padding for Android status bar
   },
   decorativeCircle: {
     position: 'absolute',
@@ -257,6 +265,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+    marginTop: Platform.OS === 'ios' ? 20 : 10, // Additional top margin for iOS
   },
   logoBackground: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -274,21 +283,22 @@ const styles = StyleSheet.create({
     elevation: 15,
   },
   logo: {
-    width: width * 0.4,
-    height: width * 0.4 * 0.6,
+    width: width * 0.35, // Slightly smaller logo
+    height: width * 0.35 * 0.6,
     tintColor: '#ffffff',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-    marginTop: -height * 0.1,
+    marginTop: -height * 0.08, // Reduced negative margin
     zIndex: 5,
+    marginBottom: 20, // Added bottom margin
   },
   contentContainer: {
     backgroundColor: '#ffffff',
     borderRadius: 25,
-    padding: 35,
+    padding: 30, // Slightly reduced padding
     shadowColor: '#084c3a',
     shadowOffset: {
       width: 0,
@@ -299,9 +309,10 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderWidth: 1,
     borderColor: 'rgba(8, 76, 58, 0.05)',
+    marginBottom: 20, // Added bottom margin for keyboard space
   },
   title: {
-    fontSize: 28,
+    fontSize: 26, // Slightly smaller font
     fontWeight: '800',
     marginBottom: 8,
     color: '#084c3a',
@@ -309,21 +320,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15, // Slightly smaller font
     color: '#6b7280',
-    marginBottom: 35,
+    marginBottom: 30, // Reduced margin
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   formContainer: {
     marginBottom: 10,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18, // Reduced margin
   },
   forgotContainer: {
     alignSelf: 'flex-end',
-    marginBottom: 25,
+    marginBottom: 20, // Reduced margin
     marginTop: 5,
   },
   forgotText: {
@@ -336,7 +347,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#084c3a',
     borderRadius: 16,
     paddingHorizontal: 24,
-    height: 58,
+    height: 56, // Slightly reduced height
     alignItems: 'center',
     justifyContent: 'space-between',
     shadowColor: '#084c3a',

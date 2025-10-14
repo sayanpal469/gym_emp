@@ -12,7 +12,7 @@ import { RootState } from '../redux/store';
 const HomeScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const navigation = useNavigation<any>();
-    const { userName , phone} = useSelector((state: RootState) => state.auth);
+  const { userName, phone } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     changeNavigationBarColor('#ffffff', true);
@@ -52,7 +52,7 @@ const HomeScreen = () => {
             <Image source={require('../assets/icons/Client.png')} style={styles.tileIcon} />
             <Text style={styles.tileText}>PT</Text>
           </TouchableOpacity>
-          
+
         </View>
       </View>
 
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     resizeMode: 'contain',
-    color:'#075E4D',
+    color: '#075E4D',
   },
   section: {
     marginBottom: 25,

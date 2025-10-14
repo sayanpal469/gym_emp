@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import Routes from './src/routes';
-import 'react-native-reanimated';
+// import 'react-native-reanimated';
 
 import { Platform, Text, TextInput, PermissionsAndroid, Alert, Linking } from 'react-native';
 import { Provider } from 'react-redux';
