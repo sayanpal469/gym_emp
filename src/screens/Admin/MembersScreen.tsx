@@ -11,6 +11,8 @@ import {
     ActivityIndicator,
     RefreshControl,
     Alert,
+    TextInput,
+    Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -50,9 +52,11 @@ interface ApiResponse {
 const MembersScreen = () => {
     const navigation = useNavigation();
     const [members, setMembers] = useState<Member[]>([]);
+    const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchMembers = async () => {
         try {
@@ -66,6 +70,7 @@ const MembersScreen = () => {
 
             if (response.data.status === 'success') {
                 setMembers(response.data.data);
+                setFilteredMembers(response.data.data);
             } else {
                 throw new Error('Failed to fetch members');
             }
@@ -91,6 +96,28 @@ const MembersScreen = () => {
         }
     };
 
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
+        
+        if (query.trim() === '') {
+            setFilteredMembers(members);
+        } else {
+            const lowerQuery = query.toLowerCase();
+            const filtered = members.filter(member => 
+                member.member_name.toLowerCase().includes(lowerQuery) ||
+                (member.email && member.email.toLowerCase().includes(lowerQuery)) ||
+                member.contact.includes(query) ||
+                (member.branch_name && member.branch_name.toLowerCase().includes(lowerQuery)) ||
+                member.subscription.package_name.toLowerCase().includes(lowerQuery)
+            );
+            setFilteredMembers(filtered);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchQuery('');
+        setFilteredMembers(members);
+    };
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -131,7 +158,7 @@ const MembersScreen = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>TEAM MEMBERS</Text>
+                    <Text style={styles.title}>MEMBERS</Text>
                     <View style={styles.refreshButton} />
                 </View>
                 <View style={styles.loadingContainer}>
@@ -149,7 +176,7 @@ const MembersScreen = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>TEAM MEMBERS</Text>
+                <Text style={styles.title}>MEMBERS</Text>
                 <TouchableOpacity
                     onPress={onRefresh}
                     style={styles.refreshButton}
@@ -165,6 +192,26 @@ const MembersScreen = () => {
                         />
                     )}
                 </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                    <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search by name, email, phone, branch, or package..."
+                        placeholderTextColor="#999"
+                        value={searchQuery}
+                        onChangeText={handleSearch}
+                        returnKeyType="search"
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color="#666" />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             {/* Error Message */}
@@ -187,16 +234,27 @@ const MembersScreen = () => {
                     />
                 }
             >
-                {members.length === 0 ? (
+                {filteredMembers.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Ionicons name="people-outline" size={64} color="#ccc" />
-                        <Text style={styles.emptyText}>No team members found</Text>
-                        <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-                            <Text style={styles.retryText}>Retry</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.emptyText}>
+                            {searchQuery.trim() !== '' 
+                                ? 'No matching members found' 
+                                : 'No team members found'
+                            }
+                        </Text>
+                        {searchQuery.trim() !== '' ? (
+                            <TouchableOpacity onPress={clearSearch} style={styles.retryButton}>
+                                <Text style={styles.retryText}>Clear Search</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+                                <Text style={styles.retryText}>Retry</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
-                    members.map((member) => (
+                    filteredMembers.map((member) => (
                         <TouchableOpacity
                             key={member.member_id}
                             style={styles.memberCard}
@@ -250,14 +308,14 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingTop: 35,
+        paddingTop: Platform.OS === 'ios' ? 50 : 35,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        marginBottom: 10,
+        marginBottom: 12,
     },
     title: {
         fontSize: 20,
@@ -266,10 +324,37 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
         marginLeft: -26,
+        color: '#000',
     },
     refreshButton: {
         padding: 8,
         width: 42,
+    },
+    // Search Styles
+    searchContainer: {
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 48,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#333',
+        paddingVertical: 0,
+    },
+    clearButton: {
+        padding: 4,
+        marginLeft: 8,
     },
     listContainer: {
         paddingHorizontal: 12,
@@ -322,6 +407,7 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         fontSize: 14,
         color: '#666',
+        flexShrink: 1,
     },
     arrowContainer: {
         padding: 8,
@@ -342,6 +428,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingTop: 60,
+        paddingHorizontal: 20,
     },
     emptyText: {
         fontSize: 16,

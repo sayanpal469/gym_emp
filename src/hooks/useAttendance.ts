@@ -11,6 +11,7 @@ interface AttendancePayload {
   lng: number;
   date: string;
   time: string;
+  type: string
 }
 
 interface LeavePayload {
@@ -76,13 +77,22 @@ export const useAttendance = () => {
     setError(null);
     setMessage(null);
 
+    console.log('🚀 Sending attendance request to:', APIEndpoints.attendance);
+    console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+
     try {
       const response = await baseClient.post(APIEndpoints.attendance, payload);
+
+      console.log('✅ Full API Response:', JSON.stringify(response, null, 2));
+      console.log('✅ Response data:', response.data);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
 
       const { status, message: responseMessage } = response.data;
       setMessage(responseMessage);
 
       if (status === true) {
+        console.log('🎉 Attendance marked successfully');
         Toast.show({
           type: 'success',
           text1: 'Attendance Marked',
@@ -91,6 +101,7 @@ export const useAttendance = () => {
 
         return { success: true };
       } else {
+        console.log('❌ API returned failure status');
         setError(responseMessage || 'Failed to mark attendance');
 
         Toast.show({
@@ -102,7 +113,18 @@ export const useAttendance = () => {
         return { success: false };
       }
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || 'Something went wrong';
+      console.log('💥 API Error Details:');
+      console.log('💥 Error object:', err);
+      console.log('💥 Error message:', err?.message);
+      console.log('💥 Error code:', err?.code);
+      console.log('💥 Response data:', err?.response?.data);
+      console.log('💥 Response status:', err?.response?.status);
+      console.log('💥 Response headers:', err?.response?.headers);
+
+      const errMsg =
+        err?.response?.data?.message || err?.message || 'Something went wrong';
+      console.log('💥 Final error message:', errMsg);
+
       setError(errMsg);
       setMessage(errMsg);
 
@@ -171,21 +193,25 @@ export const useAttendance = () => {
     setMessage(null);
 
     const payload = {
-      emp_id: userId
+      emp_id: userId,
     };
 
     try {
-      const response = await baseClient.post(APIEndpoints.attendanceList, payload);
+      const response = await baseClient.post(
+        APIEndpoints.attendanceList,
+        payload,
+      );
 
-      const { status, employee_id, attendance } = response.data as EmpAttendanceResponse;
+      const { status, employee_id, attendance } =
+        response.data as EmpAttendanceResponse;
 
       if (status === 'success') {
-        return { 
-          success: true, 
+        return {
+          success: true,
           data: {
             employee_id,
-            attendance
-          }
+            attendance,
+          },
         };
       } else {
         const errorMessage = 'Failed to fetch attendance list';
@@ -200,7 +226,8 @@ export const useAttendance = () => {
         return { success: false, data: null };
       }
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || 'Failed to fetch attendance list';
+      const errMsg =
+        err?.response?.data?.message || 'Failed to fetch attendance list';
       setError(errMsg);
       setMessage(errMsg);
 
@@ -222,21 +249,22 @@ export const useAttendance = () => {
     setMessage(null);
 
     const payload = {
-      emp_id: userId
+      emp_id: userId,
     };
 
     try {
       const response = await baseClient.post(APIEndpoints.leaveList, payload);
 
-      const { status, employee_id, leave_requests } = response.data as LeaveListResponse;
+      const { status, employee_id, leave_requests } =
+        response.data as LeaveListResponse;
 
       if (status === 'success') {
-        return { 
-          success: true, 
+        return {
+          success: true,
           data: {
             employee_id,
-            leave_requests
-          }
+            leave_requests,
+          },
         };
       } else {
         const errorMessage = 'Failed to fetch leave requests';
@@ -252,7 +280,7 @@ export const useAttendance = () => {
       }
     } catch (err: any) {
       let errMsg = 'Failed to fetch leave requests';
-      
+
       // Handle specific error cases
       if (err?.response?.status === 404) {
         errMsg = err?.response?.data?.message || 'No leave requests found';

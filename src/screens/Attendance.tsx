@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -230,6 +231,7 @@ const Attendance = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+       <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -367,6 +369,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    marginTop: 16,
   },
   title: {
     fontSize: 18,

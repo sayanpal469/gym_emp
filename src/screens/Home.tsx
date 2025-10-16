@@ -20,7 +20,7 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+      <StatusBar backgroundColor="#075E4D" barStyle="dark-content" />
 
       {/* Curved Header */}
       <View style={styles.headerContainer}>

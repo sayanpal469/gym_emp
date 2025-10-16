@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     SafeAreaView,
     View,
@@ -10,13 +10,16 @@ import {
     ActivityIndicator,
     RefreshControl,
     Image,
+    TextInput,
+    Platform,
+    Animated,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
-import { authClient } from '../../services/api.clients'; // Adjust path as needed
-import { APIEndpoints } from '../../services/api.endpoints'; // Adjust path as needed
+import { authClient } from '../../services/api.clients';
+import { APIEndpoints } from '../../services/api.endpoints';
 import { store } from '../../redux/store';
 
 const screenWidth = Dimensions.get('window').width;
@@ -47,14 +50,20 @@ interface ApiEmployee {
 const StuffScreen = () => {
     const navigation = useNavigation();
     const [members, setMembers] = useState<Member[]>([]);
+    const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('All');
+    const [availableRoles, setAvailableRoles] = useState<string[]>(['All']);
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    const tabsScrollViewRef = useRef<ScrollView>(null);
+    const tabPositions = useRef<{[key: string]: number}>({});
 
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            // Get employee ID from Redux store (assuming it's stored there)
-            const empId = store.getState().auth.user?.employee_id || 2; // Fallback to 2 if not available
+            const empId = store.getState().auth.user?.employee_id || 2;
 
             const response = await authClient.post(APIEndpoints.getAllEmployeeList, {
                 emp_id: empId
@@ -63,7 +72,6 @@ const StuffScreen = () => {
             if (response.data.status === 'success') {
                 const apiEmployees: ApiEmployee[] = response.data.data;
 
-                // Transform API data to match our Member interface
                 const transformedMembers: Member[] = apiEmployees.map(emp => ({
                     id: parseInt(emp.employee_id),
                     name: `${emp.first_name} ${emp.last_name}`.trim(),
@@ -74,16 +82,69 @@ const StuffScreen = () => {
                 }));
 
                 setMembers(transformedMembers);
+                setFilteredMembers(transformedMembers);
+                
+                const roles = ['All', ...new Set(transformedMembers.map(member => member.role))];
+                setAvailableRoles(roles);
             } else {
                 console.error('API returned error status:', response.data);
                 setMembers([]);
+                setFilteredMembers([]);
             }
         } catch (error) {
             console.error('Error fetching members:', error);
             setMembers([]);
+            setFilteredMembers([]);
         } finally {
             setLoading(false);
         }
+    };
+
+    const filterMembers = (role: string, query: string) => {
+        let filtered = members;
+
+        // Filter by role
+        if (role !== 'All') {
+            filtered = filtered.filter(member => member.role === role);
+        }
+
+        // Filter by search query
+        if (query.trim() !== '') {
+            const lowerQuery = query.toLowerCase();
+            filtered = filtered.filter(member => 
+                member.name.toLowerCase().includes(lowerQuery) ||
+                member.branch.toLowerCase().includes(lowerQuery) ||
+                member.role.toLowerCase().includes(lowerQuery) ||
+                member.phone.includes(query)
+            );
+        }
+
+        setFilteredMembers(filtered);
+    };
+
+    const filterMembersByRole = (role: string) => {
+        setActiveTab(role);
+        filterMembers(role, searchQuery);
+        
+        // Scroll to the selected tab
+        setTimeout(() => {
+            if (tabPositions.current[role] !== undefined && tabsScrollViewRef.current) {
+                tabsScrollViewRef.current.scrollTo({
+                    x: tabPositions.current[role] - 50, // Offset for better visibility
+                    animated: true
+                });
+            }
+        }, 100);
+    };
+
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
+        filterMembers(activeTab, query);
+    };
+
+    const clearSearch = () => {
+        setSearchQuery('');
+        filterMembers(activeTab, '');
     };
 
     const onRefresh = async () => {
@@ -92,14 +153,20 @@ const StuffScreen = () => {
         setRefreshing(false);
     };
 
+    // Measure tab positions for scrolling
+    const onTabLayout = (role: string, event: any) => {
+        const { x } = event.nativeEvent.layout;
+        tabPositions.current[role] = x;
+    };
+
     useEffect(() => {
         fetchMembers();
     }, []);
 
-    // In MembersScreen.tsx
     const navigateToMemberDetails = (member: Member) => {
         navigation.navigate('StuffDetails', { employeeId: member.id });
     };
+
     if (loading && members.length === 0) {
         return (
             <SafeAreaView style={styles.safeArea}>
@@ -107,12 +174,12 @@ const StuffScreen = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>STUFF LIST</Text>
+                    <Text style={styles.title}>STUFFS</Text>
                     <View style={styles.refreshButton} />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#075E4D" />
-                    <Text style={styles.loadingText}>Loading stuff members...</Text>
+                    <Text style={styles.loadingText}>Loading staff members...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -125,7 +192,7 @@ const StuffScreen = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>STUFF LIST</Text>
+                <Text style={styles.title}>STUFFS</Text>
                 <TouchableOpacity
                     onPress={onRefresh}
                     style={styles.refreshButton}
@@ -143,6 +210,67 @@ const StuffScreen = () => {
                 </TouchableOpacity>
             </View>
 
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                    <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search by name, branch, role, or phone..."
+                        placeholderTextColor="#999"
+                        value={searchQuery}
+                        onChangeText={handleSearch}
+                        returnKeyType="search"
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color="#666" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            {/* Role Tabs */}
+            <View style={styles.tabsWrapper}>
+                <ScrollView 
+                    ref={tabsScrollViewRef}
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.tabsContainer}
+                    contentContainerStyle={styles.tabsContentContainer}
+                    bounces={false}
+                    decelerationRate="fast"
+                    snapToAlignment="center"
+                >
+                    {availableRoles.map((role) => (
+                        <TouchableOpacity
+                            key={role}
+                            style={[
+                                styles.tab,
+                                activeTab === role && styles.activeTab
+                            ]}
+                            onPress={() => filterMembersByRole(role)}
+                            onLayout={(event) => onTabLayout(role, event)}
+                        >
+                            <Text 
+                                style={[
+                                    styles.tabText,
+                                    activeTab === role && styles.activeTabText
+                                ]}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                            >
+                                {role}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+                
+                {/* Gradient overlay for scroll indication */}
+                <View style={styles.scrollIndicatorRight} />
+                <View style={styles.scrollIndicatorLeft} />
+            </View>
+
             {/* Members List */}
             <ScrollView
                 contentContainerStyle={styles.listContainer}
@@ -155,16 +283,29 @@ const StuffScreen = () => {
                     />
                 }
             >
-                {members.length === 0 ? (
+                {filteredMembers.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Ionicons name="people-outline" size={64} color="#ccc" />
-                        <Text style={styles.emptyText}>No team members found</Text>
-                        <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-                            <Text style={styles.retryText}>Retry</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.emptyText}>
+                            {searchQuery.trim() !== '' 
+                                ? 'No matching results found' 
+                                : activeTab === 'All' 
+                                    ? 'No team members found' 
+                                    : `No ${activeTab} members found`
+                            }
+                        </Text>
+                        {searchQuery.trim() !== '' ? (
+                            <TouchableOpacity onPress={clearSearch} style={styles.retryButton}>
+                                <Text style={styles.retryText}>Clear Search</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+                                <Text style={styles.retryText}>Retry</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
-                    members.map((member) => (
+                    filteredMembers.map((member) => (
                         <TouchableOpacity
                             key={member.id}
                             style={styles.memberCard}
@@ -209,19 +350,18 @@ const StuffScreen = () => {
     );
 };
 
-
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingTop: 35,
+        paddingTop: Platform.OS === 'ios' ? 50 : 35,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        marginBottom: 10,
+        marginBottom: 12,
     },
     title: {
         fontSize: 20,
@@ -234,6 +374,87 @@ const styles = StyleSheet.create({
     refreshButton: {
         padding: 8,
         width: 42,
+    },
+    // Search Styles
+    searchContainer: {
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 48,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#333',
+        paddingVertical: 0,
+    },
+    clearButton: {
+        padding: 4,
+        marginLeft: 8,
+    },
+    // Tabs Wrapper
+    tabsWrapper: {
+        position: 'relative',
+        marginBottom: 12,
+    },
+    tabsContainer: {
+        maxHeight: 50,
+        flexGrow: 0,
+    },
+    tabsContentContainer: {
+        paddingHorizontal: 12,
+        alignItems: 'center',
+        paddingRight: 24, // Extra padding for last tab
+    },
+    tab: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 6,
+        borderRadius: 20,
+        backgroundColor: '#f0f0f0',
+        minWidth: 80,
+        maxWidth: 120,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 1,
+    },
+    activeTab: {
+        backgroundColor: '#075E4D',
+    },
+    tabText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#666',
+        textAlign: 'center',
+    },
+    activeTabText: {
+        color: '#fff',
+    },
+    // Scroll indicators
+    scrollIndicatorRight: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 20,
+        backgroundColor: 'linear-gradient(90deg, transparent 0%, #fff 100%)',
+    },
+    scrollIndicatorLeft: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 20,
+        backgroundColor: 'linear-gradient(270deg, transparent 0%, #fff 100%)',
     },
     listContainer: {
         paddingHorizontal: 12,
@@ -291,6 +512,7 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         fontSize: 14,
         color: '#666',
+        flexShrink: 1,
     },
     arrowContainer: {
         padding: 8,
@@ -311,6 +533,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingTop: 60,
+        paddingHorizontal: 20,
     },
     emptyText: {
         fontSize: 16,
@@ -329,63 +552,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         fontWeight: '600',
-    },
-    // Details Screen Styles
-    detailsContainer: {
-        paddingHorizontal: 16,
-        paddingBottom: 40,
-    },
-    detailsAvatarContainer: {
-        alignItems: 'center',
-        marginVertical: 20,
-    },
-    detailsAvatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-    },
-    detailsAvatarPlaceholder: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-    },
-    detailsAvatarText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 30,
-    },
-    detailsName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 12,
-        color: '#333',
-    },
-    detailsRole: {
-        fontSize: 16,
-        color: '#666',
-        marginTop: 4,
-    },
-    infoCard: {
-        backgroundColor: '#f0f0f0',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-    },
-    infoCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    infoCardTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: 8,
-        color: '#333',
-    },
-    infoCardText: {
-        fontSize: 15,
-        color: '#666',
-        lineHeight: 22,
     },
 });
 

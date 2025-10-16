@@ -19,7 +19,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { baseClient } from '../../services/api.clients';
 import { APIEndpoints } from '../../services/api.endpoints';
-import Toast from 'react-native-toast-message';
+// import Toast from 'react-native-toast-message';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -97,7 +97,7 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 bgColor: '#E8F5E9'
             },
             {
-                label: 'Off Days',
+                label: 'Absent',
                 subLabel: 'This Month',
                 value: offDays.toString(),
                 icon: 'calendar-remove',
@@ -131,6 +131,15 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 iconType: 'MaterialCommunityIcons',
                 color: '#9C27B0',
                 bgColor: '#F3E5F5'
+            },
+            {
+                label: 'Shift in Time',
+                subLabel: 'This Month',
+                value: '₹15,000',
+                icon: 'currency-inr',
+                iconType: 'MaterialCommunityIcons',
+                color: '#122ecc',
+                bgColor: '#d2d9f0'
             },
         ];
     };
@@ -174,11 +183,11 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 setAttendanceData(processedData);
             } else {
                 setAttendanceData([]);
-                Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: response.data.message,
-                });
+                // Toast.show({
+                //     type: 'error',
+                //     text1: 'Error',
+                //     text2: response.data.message,
+                // });
             }
         } catch (error: any) {
             console.error('Error fetching attendance data:', error);
@@ -191,11 +200,11 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 errorMessage = error.response.data.message;
             }
 
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: errorMessage,
-            });
+            // Toast.show({
+            //     type: 'error',
+            //     text1: 'Error',
+            //     text2: errorMessage,
+            // });
         } finally {
             setLoading(false);
         }
@@ -417,7 +426,7 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                                                 </View>
                                             </View>
 
-                                            <View style={styles.attendanceFooter}>
+                                            {/* <View style={styles.attendanceFooter}>
                                                 <Text style={styles.fullDateText}>{formatDate(record.date)}</Text>
                                                 <View style={[styles.statusBadge, { backgroundColor: statusConfig.backgroundColor }]}>
                                                     <Ionicons
@@ -430,7 +439,7 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                                                         {statusConfig.text}
                                                     </Text>
                                                 </View>
-                                            </View>
+                                            </View> */}
                                         </View>
                                     </View>
                                 );

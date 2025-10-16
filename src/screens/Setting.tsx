@@ -17,6 +17,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -142,6 +143,7 @@ const Settings = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -282,14 +284,14 @@ const Settings = ({ navigation }: any) => {
                   placeholder="Enter current password"
                   secureTextEntry={!passwordVisibility.currentPassword}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => togglePasswordVisibility('currentPassword')}
                   style={styles.visibilityToggle}
                 >
-                  <Ionicons 
-                    name={passwordVisibility.currentPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#666" 
+                  <Ionicons
+                    name={passwordVisibility.currentPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#666"
                   />
                 </TouchableOpacity>
               </View>
@@ -307,14 +309,14 @@ const Settings = ({ navigation }: any) => {
                   placeholder="Enter new password"
                   secureTextEntry={!passwordVisibility.newPassword}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => togglePasswordVisibility('newPassword')}
                   style={styles.visibilityToggle}
                 >
-                  <Ionicons 
-                    name={passwordVisibility.newPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#666" 
+                  <Ionicons
+                    name={passwordVisibility.newPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#666"
                   />
                 </TouchableOpacity>
               </View>
@@ -332,14 +334,14 @@ const Settings = ({ navigation }: any) => {
                   placeholder="Confirm new password"
                   secureTextEntry={!passwordVisibility.confirmPassword}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => togglePasswordVisibility('confirmPassword')}
                   style={styles.visibilityToggle}
                 >
-                  <Ionicons 
-                    name={passwordVisibility.confirmPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#666" 
+                  <Ionicons
+                    name={passwordVisibility.confirmPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#666"
                   />
                 </TouchableOpacity>
               </View>
@@ -377,6 +379,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    marginTop: 16
   },
   backButton: {
     padding: 4,

@@ -202,7 +202,7 @@ const HomeScreen = () => {
 
             if (response.data.status === 'success') {
                 setRevenueChartData(response.data);
-                
+
                 // Update monthly revenue in the stats card
                 const monthlyRevenue = parseFloat(response.data.monthly_revenue) || 0;
                 setRevenueData(prev => ({
@@ -250,11 +250,11 @@ const HomeScreen = () => {
             if (response.data.status === 'success') {
                 setSubscriptionData(response.data.data);
                 setMonthLabel(response.data.month);
-                
+
                 // Calculate total new members and renewals from subscription data
                 const totalSubscriptions = response.data.data.reduce((sum, item) => sum + item.total_subscriptions, 0);
                 const totalRevenue = response.data.data.reduce((sum, item) => sum + item.total_revenue, 0);
-                
+
                 setRevenueData(prev => ({
                     ...prev,
                     newMembers: totalSubscriptions,
@@ -301,13 +301,13 @@ const HomeScreen = () => {
             if (response.data.status === 'success') {
                 setStaffData(response.data.data);
                 setTodayDate(response.data.date);
-                
+
                 // Update staff present count
-                const presentCount = response.data.data.filter(staff => 
+                const presentCount = response.data.data.filter(staff =>
                     staff.status === 'Present' || staff.status === 'Late'
                 ).length;
                 const totalCount = response.data.data.length;
-                
+
                 setRevenueData(prev => ({
                     ...prev,
                     staffPresent: `${presentCount}/${totalCount}`
@@ -355,13 +355,13 @@ const HomeScreen = () => {
         refreshIntervalRef.current = setInterval(() => {
             console.log('Auto-refreshing staff attendance...');
             fetchStaffAttendance();
-        }, 5000);
+        }, 15000);
     };
 
     useEffect(() => {
         // Fetch all data on component mount
         refreshAllData();
-        
+
         // Setup auto refresh for staff attendance only
         setupAutoRefresh();
 
@@ -422,7 +422,7 @@ const HomeScreen = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+            <StatusBar backgroundColor="#075E4D" barStyle="dark-content" />
 
             {/* Header with Refresh Button */}
             <View style={styles.header}>
@@ -431,7 +431,7 @@ const HomeScreen = () => {
                     <Text style={styles.nameText}>Your Name</Text>
                 </View>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.refreshButton}
                         onPress={refreshAllData}
                     >
@@ -639,8 +639,8 @@ const HomeScreen = () => {
                                 </View>
                                 <View style={[
                                     styles.attendanceStatus,
-                                    staff.status === 'Present' ? styles.presentStatus : 
-                                    staff.status === 'Late' ? styles.lateStatus : styles.absentStatus
+                                    staff.status === 'Present' ? styles.presentStatus :
+                                        staff.status === 'Late' ? styles.lateStatus : styles.absentStatus
                                 ]}>
                                     <Text style={styles.attendanceText}>{staff.status}</Text>
                                     <Text style={styles.attendanceTime}>

@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -151,6 +152,7 @@ const RevenueScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#075E4D" barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
