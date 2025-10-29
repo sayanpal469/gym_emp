@@ -33,7 +33,7 @@ interface AttendanceRecord {
     job_end_time: string;
     type: string;
     created_at: string;
-    attendanceStatus: 'onTime' | 'Late' | 'Absent'; // Added attendance status
+    attendanceStatus: 'onTime' | 'Late' | 'Absent';
 }
 
 interface ApiAttendanceResponse {
@@ -43,10 +43,33 @@ interface ApiAttendanceResponse {
     message: string;
 }
 
+interface AttendanceSummaryResponse {
+    status: boolean;
+    employee_id: number;
+    employee_name: string;
+    branch_id: string;
+    month_start: string;
+    today: string;
+    present_days: number;
+    late_days: number;
+    absent_days: number;
+    sunday_count: number;
+    holiday_count: number;
+}
+
+interface LeaveSummaryResponse {
+    status: string;
+    emp_id: number;
+    total_leave_days: number;
+}
+
 const StuffDetailsScreen = ({ navigation, route }: any) => {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+    const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryResponse | null>(null);
+    const [leaveSummary, setLeaveSummary] = useState<LeaveSummaryResponse | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [summaryLoading, setSummaryLoading] = useState(true);
     const { width, height } = useWindowDimensions();
     const isLandscape = width > height;
     const { userId } = useSelector((state: RootState) => state.auth);
@@ -58,39 +81,99 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
     const cardWidth = isLandscape ? width * 0.22 : width * 0.44;
     const cardHeight = isLandscape ? height * 0.22 : height * 0.18;
 
-    // Calculate attendance summary from API data
+    // Fetch attendance summary data
+    const fetchAttendanceSummary = async () => {
+        try {
+            const payload = {
+                emp_id: employeeId
+            };
+
+            const response = await baseClient.post<AttendanceSummaryResponse>(
+                APIEndpoints.empAttendenceSummary,
+                payload
+            );
+
+            if (response.data.status) {
+                setAttendanceSummary(response.data);
+            } else {
+                setAttendanceSummary(null);
+                // Toast.show({
+                //     type: 'error',
+                //     text1: 'Error',
+                //     text2: 'Failed to fetch attendance summary',
+                // });
+            }
+        } catch (error: any) {
+            console.error('Error fetching attendance summary:', error);
+            setAttendanceSummary(null);
+
+            let errorMessage = 'Failed to fetch attendance summary';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+            // Toast.show({
+            //     type: 'error',
+            //     text1: 'Error',
+            //     text2: errorMessage,
+            // });
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    // Fetch leave summary data
+    const fetchLeaveSummary = async () => {
+        try {
+            const payload = {
+                emp_id: employeeId
+            };
+
+            const response = await baseClient.post<LeaveSummaryResponse>(
+                APIEndpoints.getEmployeeLeave,
+                payload
+            );
+
+            if (response.data.status === 'success') {
+                setLeaveSummary(response.data);
+            } else {
+                setLeaveSummary(null);
+                // Toast.show({
+                //     type: 'error',
+                //     text1: 'Error',
+                //     text2: 'Failed to fetch leave summary',
+                // });
+            }
+        } catch (error: any) {
+            console.error('Error fetching leave summary:', error);
+            setLeaveSummary(null);
+
+            let errorMessage = 'Failed to fetch leave summary';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+
+            // Toast.show({
+            //     type: 'error',
+            //     text1: 'Error',
+            //     text2: errorMessage,
+            // });
+        }
+    };
+
+    // Calculate summary cards data
     const calculateSummary = () => {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
+        if (!attendanceSummary || !leaveSummary) {
+            return [];
+        }
 
-        const thisMonthAttendance = attendanceData.filter(record => {
-            const recordDate = new Date(record.date);
-            return recordDate.getMonth() === currentMonth &&
-                recordDate.getFullYear() === currentYear;
-        });
-
-        const attendanceDays = new Set(
-            thisMonthAttendance.map(record => record.date)
-        ).size;
-
-        const totalWorkingDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const offDays = Math.max(0, totalWorkingDays - attendanceDays);
-
-        // Calculate penalty based on Late status
-        const lateDays = thisMonthAttendance.filter(record =>
-            record.attendanceStatus === 'Late'
-        ).length;
-
-        const penalty = lateDays * 100; // 100 per late day
-
-        // Calculate present days (records with check-in)
-        const presentDays = thisMonthAttendance.length;
+        // const penalty = attendanceSummary.late_days * 100; // 100 per late day
 
         return [
             {
-                label: 'Attendance',
+                label: 'Present',
                 subLabel: 'This Month',
-                value: presentDays.toString(),
+                value: attendanceSummary.present_days.toString(),
                 icon: 'calendar-check',
                 iconType: 'MaterialCommunityIcons',
                 color: '#4CAF50',
@@ -99,47 +182,48 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
             {
                 label: 'Absent',
                 subLabel: 'This Month',
-                value: offDays.toString(),
+                value: attendanceSummary.absent_days.toString(),
                 icon: 'calendar-remove',
                 iconType: 'MaterialCommunityIcons',
                 color: '#FF9800',
                 bgColor: '#FFF8E1'
             },
             {
-                label: 'Penalty',
+                label: 'Late',
                 subLabel: 'This Month',
-                value: `₹${penalty}`,
-                icon: 'cash-remove',
+                value: attendanceSummary.late_days.toString(),
+                icon: 'clock-alert',
                 iconType: 'MaterialCommunityIcons',
-                color: '#F44336',
-                bgColor: '#FFEBEE'
+                color: '#FF5722',
+                bgColor: '#FFE0B2'
             },
             {
                 label: 'Leave',
                 subLabel: 'This Month',
-                value: '0',
+                value: leaveSummary.total_leave_days.toString(),
                 icon: 'beach',
                 iconType: 'MaterialCommunityIcons',
                 color: '#2196F3',
                 bgColor: '#E3F2FD'
             },
             {
-                label: 'Gross Salary',
+                label: 'Holidays',
                 subLabel: 'This Month',
-                value: '₹15,000',
-                icon: 'currency-inr',
+                value: attendanceSummary.holiday_count.toString(),
+                icon: 'palm-tree',
                 iconType: 'MaterialCommunityIcons',
                 color: '#9C27B0',
                 bgColor: '#F3E5F5'
             },
             {
-                label: 'Shift in Time',
-                subLabel: 'This Month',
-                value: '₹15,000',
-                icon: 'currency-inr',
+                label: 'Pay Slip',
+                subLabel: 'View Details',
+                value: 'View',
+                icon: 'file-document',
                 iconType: 'MaterialCommunityIcons',
                 color: '#122ecc',
-                bgColor: '#d2d9f0'
+                bgColor: '#d2d9f0',
+                isAction: true
             },
         ];
     };
@@ -170,15 +254,12 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 payload
             );
 
-
-
             if (response.data.status === 'success') {
                 // Process API data and add attendance status
                 const processedData = response.data.attendance.map(record => ({
                     ...record,
                     attendanceStatus: determineAttendanceStatus(record)
                 }));
-
 
                 setAttendanceData(processedData);
             } else {
@@ -210,14 +291,31 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
         }
     };
 
+    const fetchAllData = async () => {
+        setSummaryLoading(true);
+        await Promise.all([
+            fetchAttendanceSummary(),
+            fetchLeaveSummary(),
+            fetchAttendanceData()
+        ]);
+    };
+
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchAttendanceData();
+        await fetchAllData();
         setRefreshing(false);
     };
 
+    const handlePaySlipPress = () => {
+        navigation.navigate('PaySlipScreen', {
+            employeeId: employeeId,
+            attendanceSummary: attendanceSummary,
+            leaveSummary: leaveSummary
+        });
+    };
+
     useEffect(() => {
-        fetchAttendanceData();
+        fetchAllData();
     }, [employeeId]);
 
     const formatDate = (dateString: string) => {
@@ -293,7 +391,7 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
         );
     };
 
-    const attendanceSummary = calculateSummary();
+    const summaryCards = calculateSummary();
     const uniqueAttendanceDays = getUniqueAttendanceDays();
 
     const renderIcon = (iconType: string, iconName: string, color: string, size: number = 26) => {
@@ -324,9 +422,9 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                 <TouchableOpacity
                     onPress={onRefresh}
                     style={styles.refreshButton}
-                    disabled={loading}
+                    disabled={loading || summaryLoading}
                 >
-                    {loading ? (
+                    {loading || summaryLoading ? (
                         <ActivityIndicator size="small" color="#fff" />
                     ) : (
                         <MaterialIcons
@@ -353,23 +451,35 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
             >
                 {/* Summary Section */}
                 <Text style={styles.sectionTitle}>Monthly Summary</Text>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.summaryContainer}
-                    contentContainerStyle={styles.summaryContent}
-                >
-                    {attendanceSummary.map((item, index) => (
-                        <View key={index} style={[styles.summaryCard, { backgroundColor: item.bgColor }]}>
-                            <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
-                                {renderIcon(item.iconType, item.icon, '#ffffff', 22)}
-                            </View>
-                            <Text style={styles.cardValue}>{item.value}</Text>
-                            <Text style={styles.cardLabel}>{item.label}</Text>
-                            <Text style={styles.cardSubLabel}>{item.subLabel}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
+                {summaryLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#4A90E2" />
+                        <Text style={styles.loadingText}>Loading summary data...</Text>
+                    </View>
+                ) : (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.summaryContainer}
+                        contentContainerStyle={styles.summaryContent}
+                    >
+                        {summaryCards.map((item, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={[styles.summaryCard, { backgroundColor: item.bgColor }]}
+                                onPress={item.isAction ? handlePaySlipPress : undefined}
+                                disabled={!item.isAction}
+                            >
+                                <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
+                                    {renderIcon(item.iconType, item.icon, '#ffffff', 22)}
+                                </View>
+                                <Text style={styles.cardValue}>{item.value}</Text>
+                                <Text style={styles.cardLabel}>{item.label}</Text>
+                                <Text style={styles.cardSubLabel}>{item.subLabel}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
 
                 {/* Attendance List */}
                 <View style={styles.attendanceSection}>
@@ -425,21 +535,6 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
                                                     <Text style={styles.timeValue}>{formatTime(record.job_end_time)}</Text>
                                                 </View>
                                             </View>
-
-                                            {/* <View style={styles.attendanceFooter}>
-                                                <Text style={styles.fullDateText}>{formatDate(record.date)}</Text>
-                                                <View style={[styles.statusBadge, { backgroundColor: statusConfig.backgroundColor }]}>
-                                                    <Ionicons
-                                                        name={statusConfig.icon}
-                                                        size={14}
-                                                        color={statusConfig.textColor}
-                                                        style={styles.statusIcon}
-                                                    />
-                                                    <Text style={[styles.statusText, { color: statusConfig.textColor }]}>
-                                                        {statusConfig.text}
-                                                    </Text>
-                                                </View>
-                                            </View> */}
                                         </View>
                                     </View>
                                 );
@@ -451,7 +546,6 @@ const StuffDetailsScreen = ({ navigation, route }: any) => {
         </SafeAreaView>
     );
 };
-
 
 export default StuffDetailsScreen;
 

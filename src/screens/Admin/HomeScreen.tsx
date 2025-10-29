@@ -352,10 +352,10 @@ const HomeScreen = () => {
         }
 
         // Set new interval (5 minutes = 300000 milliseconds) for staff attendance only
-        refreshIntervalRef.current = setInterval(() => {
-            console.log('Auto-refreshing staff attendance...');
-            fetchStaffAttendance();
-        }, 15000);
+        // refreshIntervalRef.current = setInterval(() => {
+        //     console.log('Auto-refreshing staff attendance...');
+        //     fetchStaffAttendance();
+        // }, 15000);
     };
 
     useEffect(() => {

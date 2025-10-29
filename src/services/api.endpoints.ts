@@ -24,7 +24,9 @@ export const APIEndpoints = {
   revenueChart: '/admin_revenue_chart.php',
   allActiveMemberList: '/admin_active_member_list.php',
   getAllOffers: '/offer.php',
-  uploadOffer: '/admin_offer_upload.php'
+  uploadOffer: '/admin_offer_upload.php',
+  empAttendenceSummary: '/get_attendance_summary_by_emp.php',
+  getEmployeeLeave: '/get_emp_total_leave_by_month.php',
 
 
 

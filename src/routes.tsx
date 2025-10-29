@@ -25,6 +25,7 @@ import PromotionScreen from './screens/Admin/Menu/PromotionScreen';
 import PromotionDetailScreen from './screens/Admin/Menu/PromotionDetailScreen';
 import AddOfferForm from './screens/Admin/Menu/AddOfferForm';
 import TransactionDetailScreen from './screens/Admin/TransactionDetailScreen';
+import PaySlipScreen from './screens/Admin/PaySlipScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -76,6 +77,13 @@ const Routes = () => {
         <Stack.Screen name="Promotion" component={PromotionScreen} />
         <Stack.Screen name="PromotionDetail" component={PromotionDetailScreen} />
         <Stack.Screen name="AddOfferForm" component={AddOfferForm} />
+        <Stack.Screen
+          name="PaySlipScreen"
+          component={PaySlipScreen}
+          options={{
+            headerShown: false
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
