@@ -18,7 +18,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useAttendance } from '../hooks/useAttendance';
 import Toast from 'react-native-toast-message';
 
-const screenWidth = Dimensions.get('window').width;
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface AttendanceRecord {
   id: number;
@@ -30,14 +30,14 @@ interface AttendanceRecord {
   job_end_time: string;
   type: string;
   created_at: string;
-  attendanceStatus: 'onTime' | 'Late'; // Added attendance status
+  attendanceStatus: 'onTime' | 'Late';
 }
 
 const Attendance = ({ navigation }: any) => {
   const { empAttendanceList, loading } = useAttendance();
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [userId] = useState(3); // TODO: Get from user context or storage
+  const [userId] = useState(3);
 
   // Calculate attendance summary from real data
   const calculateSummary = () => {
@@ -62,7 +62,7 @@ const Attendance = ({ navigation }: any) => {
       record.attendanceStatus === 'Late'
     ).length;
 
-    const penalty = lateDays * 100; // 100 per late day (adjust as needed)
+    const penalty = lateDays * 100;
 
     return [
       {
@@ -137,7 +137,6 @@ const Attendance = ({ navigation }: any) => {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAttendanceData();
-    // Ensure minimum 1 second loading time for better UX
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
@@ -196,7 +195,6 @@ const Attendance = ({ navigation }: any) => {
   };
 
   const getUniqueAttendanceDays = () => {
-    // Group by date and get the latest record for each date
     const dateMap = new Map<string, AttendanceRecord>();
 
     attendanceData.forEach(record => {
@@ -206,7 +204,6 @@ const Attendance = ({ navigation }: any) => {
       }
     });
 
-    // Sort by date descending (most recent first)
     return Array.from(dateMap.values()).sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
@@ -231,11 +228,15 @@ const Attendance = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-       <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back-ios" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>ATTENDANCE LIST</Text>
         <TouchableOpacity
@@ -248,107 +249,129 @@ const Attendance = ({ navigation }: any) => {
           ) : (
             <MaterialIcons
               name="refresh"
-              size={26}
+              size={24}
               color={"#075E4D"}
             />
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Summary Cards */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.summaryContainer}
-        contentContainerStyle={styles.summaryContent}
-      >
-        {attendanceSummary.map((item, index) => (
-          <View key={index} style={[styles.summaryCard, { backgroundColor: item.bgColor }]}>
-            <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
-              {renderIcon(item.iconType, item.icon, '#ffffff', 20)}
-            </View>
-            <Text style={styles.cardValue}>{item.value}</Text>
-            <Text style={styles.cardLabel}>{item.label}</Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Attendance List */}
-      <Text style={styles.listTitle}>ATTENDANCE LIST THIS MONTH</Text>
-
-      {loading && attendanceData.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#075E4D" />
-          <Text style={styles.loadingText}>Loading attendance data...</Text>
-        </View>
-      ) : uniqueAttendanceDays.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyText}>No attendance records found</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#075E4D']}
-              tintColor="#075E4D"
-            />
-          }
-        >
-          {uniqueAttendanceDays.map(record => {
-            const statusConfig = getStatusConfig(
-              record.attendanceStatus === 'Late' ? 'Late' : 'onTime'
-            );
-
-            return (
-              <View key={record.id} style={styles.listItem}>
-                <View style={styles.listIconBox}>
-                  <FontAwesome name="clipboard-list" size={24} color="#075E4D" />
+      {/* Main Content Container */}
+      <View style={styles.mainContainer}>
+        {/* Summary Cards */}
+        <View style={styles.summarySection}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.summaryContent}
+          >
+            {attendanceSummary.map((item, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.summaryCard, 
+                  { 
+                    backgroundColor: item.bgColor,
+                    marginRight: index === attendanceSummary.length - 1 ? 0 : 12
+                  }
+                ]}
+              >
+                <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
+                  {renderIcon(item.iconType, item.icon, '#ffffff', 20)}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.dateRow}>
-                    <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                    <Text style={styles.dateText}>{formatDate(record.date)}</Text>
-                  </View>
-                  <View style={styles.timeRow}>
-                    <Ionicons name="time-outline" size={16} color="#6B7280" />
-                    <Text style={styles.inOutText}>In: {formatTime(record.job_start_time)}</Text>
-                    <Ionicons name="time-outline" size={16} style={{ marginLeft: 20 }} color="#6B7280" />
-                    <Text style={styles.inOutText}>Out: {formatTime(record.job_end_time)}</Text>
-                  </View>
-                </View>
-
-                {/* Status Badge */}
-                <View style={styles.statusContainer}>
-                  <View style={[
-                    styles.statusBadge,
-                    { backgroundColor: statusConfig.backgroundColor }
-                  ]}>
-                    <Ionicons
-                      name={statusConfig.icon}
-                      size={14}
-                      color={statusConfig.textColor}
-                      style={styles.statusIcon}
-                    />
-                    <Text style={[
-                      styles.statusText,
-                      { color: statusConfig.textColor }
-                    ]}>
-                      {statusConfig.text}
-                    </Text>
-                  </View>
-                </View>
+                <Text style={styles.cardValue}>{item.value}</Text>
+                <Text style={styles.cardLabel}>{item.label}</Text>
               </View>
-            );
-          })}
-        </ScrollView>
-      )}
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Attendance List Section */}
+        <View style={styles.listSection}>
+          <Text style={styles.listTitle}>ATTENDANCE LIST THIS MONTH</Text>
+
+          {loading && attendanceData.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#075E4D" />
+              <Text style={styles.loadingText}>Loading attendance data...</Text>
+            </View>
+          ) : uniqueAttendanceDays.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
+              <Text style={styles.emptyText}>No attendance records found</Text>
+              <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.listScrollView}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#075E4D']}
+                  tintColor="#075E4D"
+                />
+              }
+            >
+              {uniqueAttendanceDays.map(record => {
+                const statusConfig = getStatusConfig(
+                  record.attendanceStatus === 'Late' ? 'Late' : 'onTime'
+                );
+
+                return (
+                  <View key={record.id} style={styles.listItem}>
+                    <View style={styles.listIconBox}>
+                      <FontAwesome name="clipboard-list" size={22} color="#075E4D" />
+                    </View>
+                    
+                    <View style={styles.listContentContainer}>
+                      <View style={styles.dateRow}>
+                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                        <Text style={styles.dateText}>{formatDate(record.date)}</Text>
+                      </View>
+                      <View style={styles.timeRow}>
+                        <View style={styles.timeItem}>
+                          <Ionicons name="time-outline" size={14} color="#6B7280" />
+                          <Text style={styles.inOutText}>In: {formatTime(record.job_start_time)}</Text>
+                        </View>
+                        <View style={styles.timeItem}>
+                          <Ionicons name="time-outline" size={14} color="#6B7280" />
+                          <Text style={styles.inOutText}>Out: {formatTime(record.job_end_time)}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Status Badge */}
+                    <View style={styles.statusContainer}>
+                      <View style={[
+                        styles.statusBadge,
+                        { backgroundColor: statusConfig.backgroundColor }
+                      ]}>
+                        <Ionicons
+                          name={statusConfig.icon}
+                          size={12}
+                          color={statusConfig.textColor}
+                          style={styles.statusIcon}
+                        />
+                        <Text style={[
+                          styles.statusText,
+                          { color: statusConfig.textColor }
+                        ]}>
+                          {statusConfig.text}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -359,45 +382,53 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    marginTop: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    marginTop: 16,
+    paddingVertical: 12,
+    // backgroundColor: '#fff',
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    flex: 1,
     textAlign: 'center',
-    marginLeft: -26,
   },
   refreshButton: {
-    padding: 8,
+    padding: 4,
+    width: 40,
+    alignItems: 'center',
   },
-  summaryContainer: {
-    marginTop: 16,
-    marginBottom: 8,
+  mainContainer: {
+    flex: 1,
+  },
+  summarySection: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   summaryContent: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
   },
   summaryCard: {
-    width: 140,
-    height: 140,
+    width: screenWidth * 0.35,
+    minWidth: 140,
+    maxWidth: 160,
+    height: 120,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -408,34 +439,41 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   cardValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#1F2937',
     marginBottom: 4,
+    textAlign: 'center',
   },
   cardLabel: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
     color: '#6B7280',
     fontWeight: '500',
+  },
+  listSection: {
+    flex: 1,
+    paddingTop: 16,
   },
   listTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
     paddingHorizontal: 16,
-    marginTop: 16,
     marginBottom: 12,
   },
-  listContainer: {
+  listScrollView: {
+    flex: 1,
+  },
+  listContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
@@ -458,6 +496,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 12,
   },
+  listContentContainer: {
+    flex: 1,
+  },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -465,7 +506,13 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  timeItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 16,
+    marginBottom: 4,
   },
   dateText: {
     marginLeft: 8,
@@ -474,28 +521,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inOutText: {
-    marginLeft: 8,
+    marginLeft: 6,
     fontSize: 13,
     color: '#6B7280',
   },
   statusContainer: {
     justifyContent: 'center',
     alignItems: 'flex-end',
+    minWidth: 70,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    minWidth: 70,
     justifyContent: 'center',
   },
   statusIcon: {
     marginRight: 4,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },

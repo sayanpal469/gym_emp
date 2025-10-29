@@ -26,22 +26,22 @@ export const usePt = () => {
       const { status, message, data, date } = response.data;
 
       if (status === true) {
-        Toast.show({
-          type: 'success',
-          text1: 'PT Data Loaded',
-          text2: `Data as of ${date || 'today'}`,
-        });
+        // Toast.show({
+        //   type: 'success',
+        //   text1: 'PT Data Loaded',
+        //   text2: `Data as of ${date || 'today'}`,
+        // });
 
         return { success: true, data };
       } else {
         const errMsg = message || 'Failed to fetch PT subscriptions';
         setError(errMsg);
 
-        Toast.show({
-          type: 'error',
-          text1: 'Fetch Failed',
-          text2: errMsg,
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Fetch Failed',
+        //   text2: errMsg,
+        // });
 
         return { success: false };
       }

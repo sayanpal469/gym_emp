@@ -20,6 +20,8 @@ const screenWidth = Dimensions.get('window').width;
 const Client = ({ navigation }: any) => {
   const { getAllPt, loading } = usePt();
   const [clientList, setClientList] = useState<any[]>([]);
+  const [filteredClients, setFilteredClients] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'running' | 'upcoming' | 'expired'>('all');
   const [summaryCards, setSummaryCards] = useState([
     { label: 'Renew\nThis Month', value: '0', icon: 'calendar' },
     { label: 'Renew In\nNext Month', value: '0', icon: 'calendar-arrow-right' },
@@ -46,6 +48,7 @@ const Client = ({ navigation }: any) => {
         });
 
         setClientList(formatted);
+        setFilteredClients(formatted); // Initially show all clients
 
         // Calculate summaries
         const totalClients = formatted.length;
@@ -63,6 +66,15 @@ const Client = ({ navigation }: any) => {
     fetchData();
   }, []);
 
+  // Filter clients based on active filter
+  useEffect(() => {
+    if (activeFilter === 'all') {
+      setFilteredClients(clientList);
+    } else {
+      setFilteredClients(clientList.filter(client => client.status === activeFilter));
+    }
+  }, [activeFilter, clientList]);
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'running':
@@ -74,6 +86,18 @@ const Client = ({ navigation }: any) => {
       default:
         return { backgroundColor: '#E2E3E5', color: '#383D41' };
     }
+  };
+
+  const getFilterButtonStyle = (filterType: string) => {
+    return activeFilter === filterType ? styles.activeFilterButton : styles.inactiveFilterButton;
+  };
+
+  const getFilterTextStyle = (filterType: string) => {
+    return activeFilter === filterType ? styles.activeFilterText : styles.inactiveFilterText;
+  };
+
+  const getStatusCount = (status: string) => {
+    return clientList.filter(client => client.status === status).length;
   };
 
   return (
@@ -107,6 +131,51 @@ const Client = ({ navigation }: any) => {
         ))}
       </View>
 
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          <TouchableOpacity
+            style={[styles.filterButton, getFilterButtonStyle('all')]}
+            onPress={() => setActiveFilter('all')}
+          >
+            <Text style={[styles.filterText, getFilterTextStyle('all')]}>
+              All ({clientList.length})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterButton, getFilterButtonStyle('running')]}
+            onPress={() => setActiveFilter('running')}
+          >
+            <Text style={[styles.filterText, getFilterTextStyle('running')]}>
+              Running ({getStatusCount('running')})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterButton, getFilterButtonStyle('upcoming')]}
+            onPress={() => setActiveFilter('upcoming')}
+          >
+            <Text style={[styles.filterText, getFilterTextStyle('upcoming')]}>
+              Upcoming ({getStatusCount('upcoming')})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterButton, getFilterButtonStyle('expired')]}
+            onPress={() => setActiveFilter('expired')}
+          >
+            <Text style={[styles.filterText, getFilterTextStyle('expired')]}>
+              Expired ({getStatusCount('expired')})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
       {/* Client List */}
       <Text style={styles.listTitle}>LIST</Text>
 
@@ -114,36 +183,45 @@ const Client = ({ navigation }: any) => {
         <ActivityIndicator size="large" color="#075E4D" style={{ marginTop: 20 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.listContainer}>
-          {clientList.map((client, index) => {
-            const statusStyle = getStatusStyle(client.status);
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.listItem}
-                onPress={() => navigation.navigate('ClientDetails', { client })}
-              >
-                <View style={styles.listIconBox}>
-                  <FontAwesome name="user-circle" size={28} color="#075E4D" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.clientName}>{client.member_name}</Text>
-                  <View style={styles.dateRow}>
-                    <Ionicons name="calendar-outline" size={16} />
-                    <Text style={styles.dateText}>Start: {client.start_date}</Text>
+          {filteredClients.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="account-off-outline" size={50} color="#ccc" />
+              <Text style={styles.emptyStateText}>
+                No {activeFilter === 'all' ? '' : activeFilter} clients found
+              </Text>
+            </View>
+          ) : (
+            filteredClients.map((client, index) => {
+              const statusStyle = getStatusStyle(client.status);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.listItem}
+                  onPress={() => navigation.navigate('ClientDetails', { client })}
+                >
+                  <View style={styles.listIconBox}>
+                    <FontAwesome name="user-circle" size={28} color="#075E4D" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.clientName}>{client.member_name}</Text>
+                    <View style={styles.dateRow}>
+                      <Ionicons name="calendar-outline" size={16} />
+                      <Text style={styles.dateText}>Start: {client.start_date}</Text>
                     </View>
                     <View style={styles.dateRow2}>
-                    <Ionicons name="calendar-outline" size={16} />
-                    <Text style={styles.dateText}>End: {client.end_date}</Text>
+                      <Ionicons name="calendar-outline" size={16} />
+                      <Text style={styles.dateText}>End: {client.end_date}</Text>
+                    </View>
                   </View>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
-                  <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 12 }}>
-                    {client.status.toUpperCase()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
+                    <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 12 }}>
+                      {client.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -198,16 +276,53 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
+  // Filter Styles
+  filterContainer: {
+    marginTop: 20,
+    paddingHorizontal: 12,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 4,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginHorizontal: 4,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeFilterButton: {
+    backgroundColor: '#075E4D',
+  },
+  inactiveFilterButton: {
+    backgroundColor: '#f2f2f2',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  activeFilterText: {
+    color: '#ffffff',
+  },
+  inactiveFilterText: {
+    color: '#666666',
+  },
   listTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     paddingHorizontal: 22,
-    marginTop: 30,
+    marginTop: 20,
     marginBottom: 10,
   },
   listContainer: {
     paddingHorizontal: 12,
     paddingBottom: 80,
+    minHeight: 200,
   },
   listItem: {
     flexDirection: 'row',
@@ -237,13 +352,13 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'flex-start',
+    justifyContent: 'flex-start',
   },
-   dateRow2: {
+  dateRow2: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'flex-start',
-    marginTop:8,
+    justifyContent: 'flex-start',
+    marginTop: 8,
   },
   dateText: {
     marginLeft: 4,
@@ -254,5 +369,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+    textAlign: 'center',
   },
 });

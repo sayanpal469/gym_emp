@@ -26,6 +26,8 @@ import PromotionDetailScreen from './screens/Admin/Menu/PromotionDetailScreen';
 import AddOfferForm from './screens/Admin/Menu/AddOfferForm';
 import TransactionDetailScreen from './screens/Admin/TransactionDetailScreen';
 import PaySlipScreen from './screens/Admin/PaySlipScreen';
+import NewTrialAssign from './screens/NewTrialAssign';
+import TrialAssignmentDetail from './screens/TrialAssignmentDetail';
 
 
 const Stack = createNativeStackNavigator();
@@ -77,6 +79,8 @@ const Routes = () => {
         <Stack.Screen name="Promotion" component={PromotionScreen} />
         <Stack.Screen name="PromotionDetail" component={PromotionDetailScreen} />
         <Stack.Screen name="AddOfferForm" component={AddOfferForm} />
+        <Stack.Screen name="NewTrialAssign" component={NewTrialAssign} />
+        <Stack.Screen name="TrialAssignmentDetail" component={TrialAssignmentDetail} />
         <Stack.Screen
           name="PaySlipScreen"
           component={PaySlipScreen}

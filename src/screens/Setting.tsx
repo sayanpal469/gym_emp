@@ -23,16 +23,29 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
+import { authClient } from '../services/api.clients';
+import { APIEndpoints } from '../services/api.endpoints';
 
 const { height } = Dimensions.get('window');
 
 const Settings = ({ navigation }: any) => {
   const dispatch = useDispatch();
+  const authState = useSelector((state: any) => state.auth);
+  
+  // Get user initials from name
+  const getUserInitials = (name: string) => {
+    if (!name) return 'JD';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   const [userData, setUserData] = useState({
-    name: 'John Doe',
-    email: 'johndoe@example.com',
+    name: authState.userName || 'John Doe',
+    email: authState.email || '',
+    phone: authState.phone || '',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -42,14 +55,15 @@ const Settings = ({ navigation }: any) => {
   });
 
   const [passwordVisibility, setPasswordVisibility] = useState({
-    currentPassword: false,
-    newPassword: false,
-    confirmPassword: false,
+    currentPassword: true,
+    newPassword: true,
+    confirmPassword: true,
   });
 
   const [isPasswordDrawerVisible, setPasswordDrawerVisible] = useState(false);
   const [drawerAnim] = useState(new Animated.Value(height));
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const togglePasswordVisibility = (field: keyof typeof passwordVisibility) => {
     setPasswordVisibility(prev => ({
@@ -81,24 +95,44 @@ const Settings = ({ navigation }: any) => {
       });
       // Reset visibility states when closing drawer
       setPasswordVisibility({
-        currentPassword: false,
-        newPassword: false,
-        confirmPassword: false,
+        currentPassword: true,
+        newPassword: true,
+        confirmPassword: true,
       });
     });
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    if (!authState.userId) {
+      alert('User ID not found');
+      return;
+    }
+
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const payload = {
+        employee_id: authState.userId,
+        email: userData.email,
+        phone: userData.phone.replace(/\D/g, ''), // Remove non-digit characters
+      };
+
+      const response = await authClient.post(APIEndpoints.updateContact || '/update_employee_contact.php', payload);
+      
+      if (response.data.status) {
+        alert('Profile updated successfully!');
+        // You might want to update the auth state here with new contact info
+      } else {
+        alert(response.data.message || 'Failed to update profile');
+      }
+    } catch (error: any) {
+      console.error('Update contact error:', error);
+      alert(error.response?.data?.message || 'Failed to update profile');
+    } finally {
       setIsSaving(false);
-      // Show success message
-      alert('Profile updated successfully!');
-    }, 1500);
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert("New passwords don't match");
@@ -110,9 +144,39 @@ const Settings = ({ navigation }: any) => {
       return;
     }
 
-    // Simulate API call
-    alert('Password changed successfully!');
-    closePasswordDrawer();
+    if (!authState.userId) {
+      alert('User ID not found');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const payload = {
+        employee_id: authState.userId,
+        old_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      };
+
+      const response = await authClient.post(APIEndpoints.changePassword || '/change_password_employee.php', payload);
+      
+      if (response.data.status) {
+        alert('Password changed successfully!');
+        closePasswordDrawer();
+      } else {
+        alert(response.data.message || 'Failed to change password');
+      }
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to change password';
+      
+      if (error.response?.status === 401) {
+        alert('Incorrect current password');
+      } else {
+        alert(errorMessage);
+      }
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   const handleLogout = () => {
@@ -164,31 +228,27 @@ const Settings = ({ navigation }: any) => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Profile Image Section */}
+          {/* Profile Image Section - Replaced with Initials */}
           <View style={styles.profileImageContainer}>
-            <View style={styles.imageWrapper}>
-              <Image
-                source={{ uri: 'https://randomuser.me/api/portraits/men/1.jpg' }}
-                style={styles.profileImage}
-              />
-              <TouchableOpacity style={styles.editImageButton}>
-                <Feather name="camera" size={20} color="#fff" />
-              </TouchableOpacity>
+            <View style={styles.initialsContainer}>
+              <Text style={styles.initialsText}>
+                {getUserInitials(userData.name)}
+              </Text>
             </View>
-            <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+            <Text style={styles.changePhotoText}>{userData.name}</Text>
           </View>
 
           {/* Form Section */}
           <View style={styles.formContainer}>
-            {/* Name Field */}
+            {/* Name Field - Made non-editable */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Full Name</Text>
-              <View style={styles.inputWrapper}>
+              <View style={[styles.inputWrapper, styles.disabledInput]}>
                 <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, styles.disabledText]}
                   value={userData.name}
-                  onChangeText={(text) => setUserData({ ...userData, name: text })}
+                  editable={false}
                   placeholder="Enter your name"
                 />
               </View>
@@ -210,19 +270,19 @@ const Settings = ({ navigation }: any) => {
               </View>
             </View>
 
-            {/* Phone Field (readonly) */}
+            {/* Phone Field */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Phone Number</Text>
-              <View style={[styles.inputWrapper, styles.disabledInput]}>
+              <View style={styles.inputWrapper}>
                 <Feather name="phone" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.textInput, { color: '#999' }]}
-                  value="+1 (555) 123-4567"
-                  editable={false}
-                  placeholder="Phone number"
+                  style={styles.textInput}
+                  value={userData.phone}
+                  onChangeText={(text) => setUserData({ ...userData, phone: text })}
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
                 />
               </View>
-              <Text style={styles.noteText}>Phone number cannot be changed</Text>
             </View>
 
             {/* Change Password Button */}
@@ -264,96 +324,113 @@ const Settings = ({ navigation }: any) => {
             { transform: [{ translateY: drawerAnim }] }
           ]}
         >
-          <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>Change Password</Text>
-            <TouchableOpacity onPress={closePasswordDrawer}>
-              <MaterialIcons name="close" size={24} color="#000" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.drawerContent}>
-            {/* Current Password */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Current Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={passwordData.currentPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, currentPassword: text })}
-                  placeholder="Enter current password"
-                  secureTextEntry={!passwordVisibility.currentPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => togglePasswordVisibility('currentPassword')}
-                  style={styles.visibilityToggle}
-                >
-                  <Ionicons
-                    name={passwordVisibility.currentPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.drawerKeyboardAvoidingView}
+          >
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Change Password</Text>
+              <TouchableOpacity onPress={closePasswordDrawer}>
+                <MaterialIcons name="close" size={24} color="#000" />
+              </TouchableOpacity>
             </View>
 
-            {/* New Password */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>New Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={passwordData.newPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, newPassword: text })}
-                  placeholder="Enter new password"
-                  secureTextEntry={!passwordVisibility.newPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => togglePasswordVisibility('newPassword')}
-                  style={styles.visibilityToggle}
-                >
-                  <Ionicons
-                    name={passwordVisibility.newPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Confirm Password */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirm New Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={passwordData.confirmPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, confirmPassword: text })}
-                  placeholder="Confirm new password"
-                  secureTextEntry={!passwordVisibility.confirmPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => togglePasswordVisibility('confirmPassword')}
-                  style={styles.visibilityToggle}
-                >
-                  <Ionicons
-                    name={passwordVisibility.confirmPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.updatePasswordButton}
-              onPress={handleChangePassword}
+            <ScrollView 
+              style={styles.drawerScrollView}
+              contentContainerStyle={styles.drawerScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.updatePasswordText}>Update Password</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.drawerContent}>
+                {/* Current Password */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Current Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      value={passwordData.currentPassword}
+                      onChangeText={(text) => setPasswordData({ ...passwordData, currentPassword: text })}
+                      placeholder="Enter current password"
+                      secureTextEntry={passwordVisibility.currentPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => togglePasswordVisibility('currentPassword')}
+                      style={styles.visibilityToggle}
+                    >
+                      <Ionicons
+                        name={passwordVisibility.currentPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color="#666"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* New Password */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>New Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      value={passwordData.newPassword}
+                      onChangeText={(text) => setPasswordData({ ...passwordData, newPassword: text })}
+                      placeholder="Enter new password"
+                      secureTextEntry={passwordVisibility.newPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => togglePasswordVisibility('newPassword')}
+                      style={styles.visibilityToggle}
+                    >
+                      <Ionicons
+                        name={passwordVisibility.newPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color="#666"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Confirm New Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      value={passwordData.confirmPassword}
+                      onChangeText={(text) => setPasswordData({ ...passwordData, confirmPassword: text })}
+                      placeholder="Confirm new password"
+                      secureTextEntry={passwordVisibility.confirmPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => togglePasswordVisibility('confirmPassword')}
+                      style={styles.visibilityToggle}
+                    >
+                      <Ionicons
+                        name={passwordVisibility.confirmPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color="#666"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.updatePasswordButton, isUpdatingPassword && styles.disabledButton]}
+                  onPress={handleChangePassword}
+                  disabled={isUpdatingPassword}
+                >
+                  {isUpdatingPassword ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.updatePasswordText}>Update Password</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Animated.View>
       </Modal>
     </SafeAreaView>
@@ -403,6 +480,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  initialsContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#075E4D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  initialsText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   imageWrapper: {
     position: 'relative',
     marginBottom: 12,
@@ -426,9 +517,9 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   changePhotoText: {
-    color: '#075E4D',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
   },
   formContainer: {
     padding: 20,
@@ -462,6 +553,9 @@ const styles = StyleSheet.create({
     height: 50,
     fontSize: 16,
     color: '#333',
+  },
+  disabledText: {
+    color: '#666',
   },
   visibilityToggle: {
     padding: 8,
@@ -515,8 +609,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: 30,
-    maxHeight: '70%',
+    maxHeight: '80%', // Increased max height
+  },
+  drawerKeyboardAvoidingView: {
+    flex: 1,
+  },
+  drawerScrollView: {
+    flex: 1,
+  },
+  drawerScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 30, // Extra padding at bottom
   },
   drawerHeader: {
     flexDirection: 'row',
@@ -540,6 +643,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 10, // Added margin bottom for better spacing
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
   updatePasswordText: {
     color: '#fff',

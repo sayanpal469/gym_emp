@@ -27,8 +27,8 @@ export const APIEndpoints = {
   uploadOffer: '/admin_offer_upload.php',
   empAttendenceSummary: '/get_attendance_summary_by_emp.php',
   getEmployeeLeave: '/get_emp_total_leave_by_month.php',
-
-
+  updateContact: '/update_employee_contact.php',
+  changePassword: '/change_password_employee.php',
 
   // address:'/update_member_address.php',
   // getBranches:'/all_branches.php',
