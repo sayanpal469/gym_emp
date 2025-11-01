@@ -174,7 +174,7 @@ const StuffScreen = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>STUFFS</Text>
+                    <Text style={styles.title}>STAFF</Text>
                     <View style={styles.refreshButton} />
                 </View>
                 <View style={styles.loadingContainer}>
@@ -192,7 +192,7 @@ const StuffScreen = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>STUFFS</Text>
+                <Text style={styles.title}>STAFF</Text>
                 <TouchableOpacity
                     onPress={onRefresh}
                     style={styles.refreshButton}
