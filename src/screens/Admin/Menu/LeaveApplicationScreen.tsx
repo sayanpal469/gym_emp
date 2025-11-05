@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ScrollView,
     FlatList,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
@@ -84,6 +85,8 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -131,6 +134,7 @@ const LeaveApplicationScreen = ({ navigation }: any) => {
                 renderItem={renderLeaveCard}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         <MaterialIcons name="inbox" size={64} color="#ccc" />
@@ -146,6 +150,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',
@@ -194,6 +199,7 @@ const styles = StyleSheet.create({
     },
     listContainer: {
         padding: 16,
+        flexGrow: 1,
     },
     leaveCard: {
         backgroundColor: '#fff',

@@ -13,6 +13,7 @@ import {
     Modal,
     PermissionsAndroid,
     Platform,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Feather from 'react-native-vector-icons/Feather';
@@ -295,6 +296,8 @@ const AddOfferForm = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -314,7 +317,10 @@ const AddOfferForm = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.formContainer}>
                     {/* Image Upload Section */}
                     <View style={styles.imageSection}>
@@ -511,6 +517,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#f8f9fa',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',

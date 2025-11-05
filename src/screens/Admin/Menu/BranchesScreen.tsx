@@ -1,3 +1,4 @@
+// BranchesScreen.tsx
 import React, { useState } from 'react';
 import {
     SafeAreaView,
@@ -8,28 +9,54 @@ import {
     ScrollView,
     Modal,
     TouchableWithoutFeedback,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useSelector } from 'react-redux';
+
+interface Branch {
+  id: number;
+  name: string;
+  address: string;
+  lat: string;
+  lng: string;
+}
+
+interface RootState {
+  auth: {
+    branches: Branch[];
+  };
+}
 
 const BranchesScreen = ({ navigation }: any) => {
-    const [selectedBranch, setSelectedBranch] = useState('Branch 1');
+    const [selectedBranch, setSelectedBranch] = useState<string>('');
     const [isDropdownVisible, setDropdownVisible] = useState(false);
 
-    const branches = [
-        { id: '1', name: 'Branch 1', address: '123 Main Street' },
-        { id: '2', name: 'Branch 2', address: '456 Oak Avenue' },
-        { id: '3', name: 'Branch 3', address: '789 Pine Road' },
-        { id: '4', name: 'Branch 4', address: '321 Elm Street' },
-    ];
+    // Get branches from Redux store
+    const branches = useSelector((state: RootState) => state.auth.branches);
 
-    const handleBranchSelect = (branch: any) => {
+    // Set initial selected branch if branches exist
+    React.useEffect(() => {
+        if (branches.length > 0 && !selectedBranch) {
+            setSelectedBranch(branches[0].name);
+        }
+    }, [branches]);
+
+    const handleBranchSelect = (branch: Branch) => {
         setSelectedBranch(branch.name);
         setDropdownVisible(false);
         // Here you would typically update the branch in your state/API
     };
 
+    const getSelectedBranchAddress = () => {
+        const branch = branches.find(b => b.name === selectedBranch);
+        return branch ? branch.address : 'No address available';
+    };
+
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -39,52 +66,70 @@ const BranchesScreen = ({ navigation }: any) => {
                 <View style={styles.placeholder} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView 
+                contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={styles.subtitle}>Current Branch</Text>
 
                 {/* Branch Selector */}
                 <TouchableOpacity
                     style={styles.branchSelector}
                     onPress={() => setDropdownVisible(true)}
+                    disabled={branches.length === 0}
                 >
                     <View style={styles.branchInfo}>
                         <MaterialIcons name="store" size={24} color="#075E4D" />
                         <View style={styles.branchText}>
-                            <Text style={styles.branchName}>{selectedBranch}</Text>
+                            <Text style={styles.branchName}>
+                                {branches.length > 0 ? selectedBranch : 'No branches available'}
+                            </Text>
                             <Text style={styles.branchAddress}>
-                                {branches.find(b => b.name === selectedBranch)?.address}
+                                {branches.length > 0 ? getSelectedBranchAddress() : 'Add branches to get started'}
                             </Text>
                         </View>
                     </View>
-                    <MaterialIcons name="arrow-drop-down" size={24} color="#666" />
+                    {branches.length > 0 && (
+                        <MaterialIcons name="arrow-drop-down" size={24} color="#666" />
+                    )}
                 </TouchableOpacity>
 
                 {/* Branch List */}
                 <View style={styles.branchList}>
                     <Text style={styles.sectionTitle}>All Branches</Text>
-                    {branches.map((branch) => (
-                        <View key={branch.id} style={styles.branchCard}>
-                            <MaterialIcons name="store" size={28} color="#075E4D" />
-                            <View style={styles.branchDetails}>
-                                <Text style={styles.branchCardName}>{branch.name}</Text>
-                                <Text style={styles.branchCardAddress}>{branch.address}</Text>
+                    {branches.length > 0 ? (
+                        branches.map((branch) => (
+                            <View key={branch.id} style={styles.branchCard}>
+                                <MaterialIcons name="store" size={28} color="#075E4D" />
+                                <View style={styles.branchDetails}>
+                                    <Text style={styles.branchCardName}>{branch.name}</Text>
+                                    <Text style={styles.branchCardAddress}>{branch.address}</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.selectButton,
+                                        selectedBranch === branch.name && styles.selectedButton
+                                    ]}
+                                    onPress={() => handleBranchSelect(branch)}
+                                >
+                                    <Text style={[
+                                        styles.selectButtonText,
+                                        selectedBranch === branch.name && styles.selectedButtonText
+                                    ]}>
+                                        {selectedBranch === branch.name ? 'Selected' : 'Select'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
-                            <TouchableOpacity
-                                style={[
-                                    styles.selectButton,
-                                    selectedBranch === branch.name && styles.selectedButton
-                                ]}
-                                onPress={() => handleBranchSelect(branch)}
-                            >
-                                <Text style={[
-                                    styles.selectButtonText,
-                                    selectedBranch === branch.name && styles.selectedButtonText
-                                ]}>
-                                    {selectedBranch === branch.name ? 'Selected' : 'Select'}
-                                </Text>
-                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <MaterialIcons name="store" size={48} color="#ccc" />
+                            <Text style={styles.emptyStateText}>No branches available</Text>
+                            <Text style={styles.emptyStateSubtext}>
+                                Branches will appear here once they are added to your account
+                            </Text>
                         </View>
-                    ))}
+                    )}
                 </View>
             </ScrollView>
 
@@ -121,6 +166,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',
@@ -144,6 +190,7 @@ const styles = StyleSheet.create({
     },
     container: {
         padding: 20,
+        paddingBottom: 40, // Extra padding at bottom
     },
     subtitle: {
         fontSize: 16,
@@ -167,6 +214,7 @@ const styles = StyleSheet.create({
     },
     branchText: {
         marginLeft: 12,
+        flex: 1,
     },
     branchName: {
         fontSize: 18,
@@ -250,6 +298,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 5,
+        maxHeight: '60%', // Limit height
     },
     dropdownTitle: {
         fontSize: 18,
@@ -271,6 +320,25 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginTop: 2,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+    },
+    emptyStateText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#666',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
+        lineHeight: 20,
     },
 });
 

@@ -6,6 +6,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
@@ -47,6 +48,8 @@ const MenuScreen = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -56,7 +59,10 @@ const MenuScreen = ({ navigation }: any) => {
                 <View style={styles.placeholder} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView 
+                contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={styles.subtitle}>Main Menu</Text>
 
                 {menuItems.map((item) => (
@@ -86,6 +92,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',
@@ -109,6 +116,7 @@ const styles = StyleSheet.create({
     },
     container: {
         padding: 20,
+        paddingBottom: 40, // Extra padding at bottom for better scroll
     },
     subtitle: {
         fontSize: 20,
@@ -162,4 +170,3 @@ const styles = StyleSheet.create({
 });
 
 export default MenuScreen;
-

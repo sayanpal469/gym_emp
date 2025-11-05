@@ -9,10 +9,11 @@ import {
     Image,
     Dimensions,
     Alert,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { baseClient } from '../api/api.clients';
-import { APIEndpoints } from '../api/api.endpoints';
+import { baseClient } from '../../../services/api.clients';
+
 
 const { width } = Dimensions.get('window');
 
@@ -96,6 +97,8 @@ const PromotionDetailScreen = ({ route, navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -105,7 +108,10 @@ const PromotionDetailScreen = ({ route, navigation }: any) => {
                 <View style={styles.placeholder} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView 
+                contentContainerStyle={styles.container}
+                showsVerticalScrollIndicator={false}
+            >
                 <Image 
                     source={{ uri: getImageUrl(promotion.image) }} 
                     style={styles.detailImage}
@@ -188,6 +194,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',

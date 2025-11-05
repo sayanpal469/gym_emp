@@ -10,6 +10,7 @@ import {
     Dimensions,
     RefreshControl,
     Alert,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { baseClient } from '../../../services/api.clients';
@@ -127,6 +128,7 @@ const PromotionScreen = ({ navigation }: any) => {
     if (loading && promotions.length === 0) {
         return (
             <SafeAreaView style={styles.safeArea}>
+                <StatusBar backgroundColor="#fff" barStyle="dark-content" />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <MaterialIcons name="arrow-back" size={26} color="#000" />
@@ -143,6 +145,8 @@ const PromotionScreen = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -188,6 +192,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',

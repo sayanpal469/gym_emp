@@ -13,6 +13,7 @@ import {
     Alert,
     TextInput,
     Platform,
+    StatusBar,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -154,6 +155,7 @@ const MembersScreen = () => {
     if (loading && members.length === 0) {
         return (
             <SafeAreaView style={styles.safeArea}>
+                <StatusBar backgroundColor="#fff" barStyle="dark-content" />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
@@ -171,6 +173,8 @@ const MembersScreen = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+            
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -233,6 +237,7 @@ const MembersScreen = () => {
                         tintColor="#075E4D"
                     />
                 }
+                showsVerticalScrollIndicator={false}
             >
                 {filteredMembers.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -308,7 +313,7 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingTop: Platform.OS === 'ios' ? 50 : 35,
+        paddingTop: StatusBar.currentHeight, // This fixes the overlapping issue
     },
     header: {
         flexDirection: 'row',
@@ -316,6 +321,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         marginBottom: 12,
+        paddingTop: 8,
     },
     title: {
         fontSize: 20,
@@ -359,6 +365,7 @@ const styles = StyleSheet.create({
     listContainer: {
         paddingHorizontal: 12,
         paddingBottom: 20,
+        flexGrow: 1,
     },
     memberCard: {
         flexDirection: 'row',

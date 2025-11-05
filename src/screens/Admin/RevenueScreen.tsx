@@ -152,7 +152,8 @@ const RevenueScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#075E4D" barStyle="dark-content" />
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -192,8 +193,6 @@ const RevenueScreen = ({ navigation }: any) => {
         }
         showsVerticalScrollIndicator={false}
       >
-
-
         {/* Revenue Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
@@ -297,7 +296,6 @@ const RevenueScreen = ({ navigation }: any) => {
           )}
         </View>
 
-
         <View style={styles.metricsContainer}>
           {/* Projection Card */}
           <View style={styles.projectionCard}>
@@ -312,7 +310,6 @@ const RevenueScreen = ({ navigation }: any) => {
             </View>
           </View>
         </View>
-
 
         {/* Additional Metrics */}
         <View style={styles.metricsContainer}>
@@ -337,8 +334,6 @@ const RevenueScreen = ({ navigation }: any) => {
               <Text style={styles.metricSubtitle}>Membership Renew</Text>
             </View>
           </View>
-
-
         </View>
 
         {/* Recent Transactions */}
@@ -445,6 +440,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
   },
   summaryCard: {
