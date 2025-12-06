@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar, ScrollView, ActivityIndicator } from 'react-native';
 import changeNavigationBarColor from 'react-native-navigation-bar-color';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AttendanceModal from '../modal/AttendanceModal';
@@ -9,7 +9,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import RoleRestrictedModal from './RoleRestrictedModal';
-import { usePt } from '../hooks/usePt'; // Import the usePt hook
+import { usePt } from '../hooks/usePt';
+import { useTrialService } from '../hooks/useTrialService';
 
 const HomeScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -18,49 +19,50 @@ const HomeScreen = () => {
   const { userName, phone, role } = useSelector((state: RootState) => state.auth);
   const isTrainer = role === 'Trainer';
   
-  // Add PT hook and state
-  const { getAllPt, loading } = usePt();
+  // Add hooks for PT and Trial data
+  const { getAllPt, loading: ptLoading } = usePt();
+  const { fetchTrialsByTrainer, loading: trialLoading, trials } = useTrialService();
+  
   const [ptRenewClients, setPtRenewClients] = useState<any[]>([]);
+  const [lastTrials, setLastTrials] = useState<any[]>([]);
+  const [newTrials, setNewTrials] = useState<any[]>([]);
 
   useEffect(() => {
     changeNavigationBarColor('#ffffff', true);
     
-    // Fetch PT clients data when component mounts
+    // Fetch PT clients and Trial data when component mounts
     if (isTrainer) {
-      fetchPtClients();
+      fetchData();
     }
   }, [isTrainer]);
 
-  const fetchPtClients = async () => {
+  const fetchData = async () => {
     if (!isTrainer) return;
     
     try {
-      const res = await getAllPt();
-      if (res.success && res.data) {
-        console.log("::::::::::::::::::::::::::",res.data)
-        const formatted: any[] = [];
-
-        Object.values(res.data).forEach((group: any) => {
-          ['running', 'upcoming', 'expired'].forEach((status) => {
-            if (Array.isArray(group[status])) {
-              group[status].forEach((item: any) => {
-                formatted.push({
-                  ...item,
-                  status,
-                });
-              });
-            }
-          });
-        });
-
-        // Filter clients for PT Renew (this month - running status)
-        const renewThisMonthClients = formatted.filter(client => client.status === 'running');
-        setPtRenewClients(renewThisMonthClients);
-
-        console.log(ptRenewClients)
+      // Fetch PT clients
+      const ptRes = await getAllPt();
+      if (ptRes.success && ptRes.data) {
+        // Get first 2 PT clients
+        const firstTwoPtClients = ptRes.data.slice(0, 2);
+        setPtRenewClients(firstTwoPtClients);
+      }
+      
+      // Fetch Trial data
+      const trialRes = await fetchTrialsByTrainer();
+      if (trialRes.success && trialRes.data && trialRes.data.length > 0) {
+        const trialData = trialRes.data;
+        
+        // Get last 2 trials (most recent)
+        const lastTwoTrials = trialData.slice(-2).reverse(); // Reverse to show most recent first
+        setLastTrials(lastTwoTrials);
+        
+        // Get first 2 trials (oldest/upcoming)
+        const firstTwoTrials = trialData.slice(0, 2);
+        setNewTrials(firstTwoTrials);
       }
     } catch (error) {
-      console.error('Error fetching PT clients:', error);
+      console.error('Error fetching data:', error);
     }
   };
 
@@ -68,8 +70,7 @@ const HomeScreen = () => {
     if (!isTrainer) {
       setRoleRestrictedModalVisible(true);
     } else {
-      // For trainers, navigate to trial screen (you can implement this)
-      // navigation.navigate('Trial');
+      navigation.navigate('NewTrialAssign');
     }
   };
 
@@ -93,9 +94,11 @@ const HomeScreen = () => {
     }
   };
 
-  // Function to get status style (similar to Client.tsx)
-  const getStatusStyle = (status: string) => {
-    switch (status) {
+  // Function to get status style based on package_status
+  const getStatusStyle = (packageStatus: string) => {
+    switch (packageStatus) {
+      case 'no_package':
+      case 'not_package':
       case 'running':
         return { backgroundColor: '#D4EDDA', color: '#155724' };
       case 'upcoming':
@@ -105,6 +108,37 @@ const HomeScreen = () => {
       default:
         return { backgroundColor: '#E2E3E5', color: '#383D41' };
     }
+  };
+
+  // Function to get display status text
+  const getDisplayStatus = (packageStatus: string) => {
+    switch (packageStatus) {
+      case 'no_package':
+      case 'not_package':
+        return 'ACTIVE';
+      case 'upcoming':
+        return 'UPCOMING';
+      case 'running':
+        return 'RUNNING';
+      case 'expired':
+        return 'EXPIRED';
+      default:
+        return 'ACTIVE';
+    }
+  };
+
+  // Function to format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === "0000-00-00") {
+      return 'Not set';
+    }
+    return dateString;
+  };
+
+  // Function to format trial date
+  const formatTrialDate = (dateString: string) => {
+    if (!dateString) return 'Not set';
+    return dateString;
   };
 
   return (
@@ -164,48 +198,108 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>LAST TRIAL ASSIGNED</Text>
-            {/* Remove View All button for Last Trial Assigned */}
           </View>
 
-          <View style={styles.listItem}>
-            <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#fff" />
-            </View>
-            <View style={styles.listContent}>
-              <Text style={styles.listDate}>
-                {isTrainer ? 'Not Available' : 'Not Applicable'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* New Trial Assign - Show for all roles */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>NEW TRIAL ASSIGN</Text>
-            {isTrainer && (
-              <TouchableOpacity onPress={handleNewTrialViewAll}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isTrainer ? (
-            <View style={styles.listItem}>
-              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                <Ionicons name="close-circle-outline" size={20} color="#fff" />
-              </View>
-              <View style={styles.listContent}>
-                <Text style={styles.listDate}>Not Available</Text>
-              </View>
-            </View>
-          ) : (
+          {!isTrainer ? (
             <View style={styles.listItem}>
               <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
                 <Ionicons name="close-circle-outline" size={20} color="#fff" />
               </View>
               <View style={styles.listContent}>
                 <Text style={styles.listDate}>Not Applicable</Text>
+              </View>
+            </View>
+          ) : trialLoading ? (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                <MaterialCommunityIcons name="loading" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>Loading trials...</Text>
+              </View>
+            </View>
+          ) : lastTrials.length > 0 ? (
+            lastTrials.map((trial, index) => (
+              <TouchableOpacity
+                key={trial.id || index}
+                style={styles.listItem}
+                onPress={() => navigation.navigate('TrialDetails', { trial })}
+              >
+                <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                  <Ionicons name="calendar-outline" size={20} color="#fff" />
+                </View>
+                <View style={styles.listContent}>
+                  <Text style={styles.listName}>{trial.member_name}</Text>
+                  <Text style={styles.listSubText}>Date: {formatTrialDate(trial.trial_date)}</Text>
+                  <Text style={styles.listSubText}>Status: {trial.status_name}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
+                <Ionicons name="information-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>No recent trials assigned</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* New Trial Assign - Show for all roles */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>NEW TRIAL ASSIGN</Text>
+            {isTrainer && newTrials.length > 0 && (
+              <TouchableOpacity onPress={handleNewTrialViewAll}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {!isTrainer ? (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
+                <Ionicons name="close-circle-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>Not Applicable</Text>
+              </View>
+            </View>
+          ) : trialLoading ? (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                <MaterialCommunityIcons name="loading" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>Loading trials...</Text>
+              </View>
+            </View>
+          ) : newTrials.length > 0 ? (
+            newTrials.map((trial, index) => (
+              <TouchableOpacity
+                key={trial.id || index}
+                style={styles.listItem}
+                onPress={() => navigation.navigate('TrialDetails', { trial })}
+              >
+                <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
+                  <Ionicons name="calendar-outline" size={20} color="#fff" />
+                </View>
+                <View style={styles.listContent}>
+                  <Text style={styles.listName}>{trial.member_name}</Text>
+                  <Text style={styles.listSubText}>Date: {formatTrialDate(trial.trial_date)}</Text>
+                  <Text style={styles.listSubText}>Status: {trial.status_name}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
+                <Ionicons name="information-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>No upcoming trials assigned</Text>
               </View>
             </View>
           )}
@@ -214,75 +308,66 @@ const HomeScreen = () => {
         {/* PT Renew - Show for all roles */}
         <View style={[styles.section, { marginBottom: 100 }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>PT RENEW <Text style={styles.monthText}>(This Month)</Text></Text>
-            {isTrainer && (
+            <Text style={styles.sectionTitle}>PT RENEW</Text>
+            {isTrainer && ptRenewClients.length > 0 && (
               <TouchableOpacity onPress={handlePTRenewViewAll}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {isTrainer ? (
-            <>
-              {loading ? (
-                <View style={styles.listItem}>
-                  <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
-                    <MaterialCommunityIcons name="loading" size={20} color="#fff" />
-                  </View>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listDate}>Loading clients...</Text>
-                  </View>
-                </View>
-              ) : ptRenewClients.length > 0 ? (
-                ptRenewClients.slice(0, 3).map((client, index) => {
-                  const statusStyle = getStatusStyle(client.status);
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.listItem}
-                      onPress={() => navigation.navigate('ClientDetails', { client })}
-                    >
-                      <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
-                        <MaterialCommunityIcons name="calendar-refresh-outline" size={20} color="#fff" />
-                      </View>
-                      <View style={styles.listContent}>
-                        <Text style={styles.listName}>{client.member_name}</Text>
-                        <Text style={styles.listSubText}>Start: {client.start_date}</Text>
-                        <Text style={styles.listSubText}>End: {client.end_date}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
-                        <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 10 }}>
-                          {client.status.toUpperCase()}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <View style={styles.listItem}>
-                  <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                    <MaterialCommunityIcons name="information-outline" size={20} color="#fff" />
-                  </View>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listDate}>No clients to renew this month</Text>
-                  </View>
-                </View>
-              )}
-              
-              {/* Show "View All" text if there are more than 3 clients */}
-              {ptRenewClients.length > 3 && (
-                <TouchableOpacity onPress={handlePTRenewViewAll} style={styles.viewMoreContainer}>
-                  <Text style={styles.viewMoreText}>+ {ptRenewClients.length - 3} more clients</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
+          {!isTrainer ? (
             <View style={styles.listItem}>
               <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
                 <MaterialCommunityIcons name="close-circle-outline" size={20} color="#fff" />
               </View>
               <View style={styles.listContent}>
                 <Text style={styles.listDate}>Not Applicable</Text>
+              </View>
+            </View>
+          ) : ptLoading ? (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                <MaterialCommunityIcons name="loading" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>Loading clients...</Text>
+              </View>
+            </View>
+          ) : ptRenewClients.length > 0 ? (
+            ptRenewClients.map((client, index) => {
+              const statusStyle = getStatusStyle(client.package_status);
+              const displayStatus = getDisplayStatus(client.package_status);
+              
+              return (
+                <TouchableOpacity
+                  key={client.id || index}
+                  style={styles.listItem}
+                  onPress={() => navigation.navigate('ClientDetails', { client })}
+                >
+                  <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                    <MaterialCommunityIcons name="calendar-refresh-outline" size={20} color="#fff" />
+                  </View>
+                  <View style={styles.listContent}>
+                    <Text style={styles.listName}>{client.name || client.member_name}</Text>
+                    <Text style={styles.listSubText}>Start: {formatDate(client.start_date)}</Text>
+                    <Text style={styles.listSubText}>End: {formatDate(client.end_date)}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
+                    <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 10 }}>
+                      {displayStatus}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View style={styles.listItem}>
+              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
+                <MaterialCommunityIcons name="information-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listDate}>No PT clients assigned</Text>
               </View>
             </View>
           )}
@@ -416,11 +501,6 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
   },
-  highlightedItem: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-  },
   listIcon: {
     width: 45,
     height: 45,
@@ -453,14 +533,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     alignSelf: 'flex-start',
-  },
-  viewMoreContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  viewMoreText: {
-    fontSize: 14,
-    color: '#075E4D',
-    fontWeight: '500',
   },
 });

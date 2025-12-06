@@ -14,11 +14,14 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { usePt } from '../hooks/usePt'; // adjust path
+import { useSelector } from 'react-redux';
+import { RootState } from '../redux/store';
 
 const screenWidth = Dimensions.get('window').width;
 
 const Client = ({ navigation }: any) => {
   const { getAllPt, loading } = usePt();
+  const { role } = useSelector((state: RootState) => state.auth);
   const [clientList, setClientList] = useState<any[]>([]);
   const [filteredClients, setFilteredClients] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'running' | 'upcoming' | 'expired'>('all');
@@ -29,42 +32,80 @@ const Client = ({ navigation }: any) => {
   ]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const res = await getAllPt();
-      if (res.success && res.data) {
-        const formatted: any[] = [];
-
-        Object.values(res.data).forEach((group: any) => {
-          ['running', 'upcoming', 'expired'].forEach((status) => {
-            if (Array.isArray(group[status])) {
-              group[status].forEach((item: any) => {
-                formatted.push({
-                  ...item,
-                  status,
-                });
-              });
-            }
-          });
-        });
-
-        setClientList(formatted);
-        setFilteredClients(formatted); // Initially show all clients
-
-        // Calculate summaries
-        const totalClients = formatted.length;
-        const renewThisMonth = formatted.filter(c => c.status === 'running').length;
-        const renewNextMonth = formatted.filter(c => c.status === 'upcoming').length;
-
-        setSummaryCards([
-          { label: 'Renew\nThis Month', value: `${renewThisMonth}`, icon: 'calendar' },
-          { label: 'Renew In\nNext Month', value: `${renewNextMonth}`, icon: 'calendar-arrow-right' },
-          { label: 'Total\nClients', value: `${totalClients}`, icon: 'account-group' },
-        ]);
-      }
-    };
-
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    const res = await getAllPt();
+    if (res.success && res.data) {
+      console.log("Client Data:", res.data);
+      
+      // Process the flat array from API
+      const formatted = res.data.map((client: any) => {
+        // Determine status based on package_status
+        let status = 'running'; // Default
+        
+        if (client.package_status === 'upcoming') {
+          status = 'upcoming';
+        } else if (client.package_status === 'expired') {
+          status = 'expired';
+        } else if (client.package_status === 'no_package' || client.package_status === 'not_package') {
+          status = 'running'; // Treat no_package/not_package as running
+        }
+        
+        // Check if PT is expiring this month
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        let renewThisMonth = false;
+        if (client.end_date && client.end_date !== "0000-00-00") {
+          try {
+            const endDate = new Date(client.end_date);
+            const endMonth = endDate.getMonth();
+            const endYear = endDate.getFullYear();
+            renewThisMonth = endMonth === currentMonth && endYear === currentYear && status === 'running';
+          } catch (error) {
+            console.error('Error parsing end date:', error);
+          }
+        }
+        
+        return {
+          ...client,
+          status,
+          renewThisMonth,
+          member_name: client.name || client.member_name || 'No Name',
+        };
+      });
+
+      setClientList(formatted);
+      setFilteredClients(formatted);
+
+      // Calculate summaries
+      const totalClients = formatted.length;
+      const runningClients = formatted.filter(c => c.status === 'running').length;
+      const upcomingClients = formatted.filter(c => c.status === 'upcoming').length;
+      const renewThisMonthCount = formatted.filter(c => c.renewThisMonth).length;
+
+      setSummaryCards([
+        { 
+          label: 'Renew\nThis Month', 
+          value: `${renewThisMonthCount}`, 
+          icon: 'calendar' 
+        },
+        { 
+          label: 'Renew In\nNext Month', 
+          value: `${upcomingClients}`, 
+          icon: 'calendar-arrow-right' 
+        },
+        { 
+          label: 'Total\nClients', 
+          value: `${totalClients}`, 
+          icon: 'account-group' 
+        },
+      ]);
+    }
+  };
 
   // Filter clients based on active filter
   useEffect(() => {
@@ -75,6 +116,7 @@ const Client = ({ navigation }: any) => {
     }
   }, [activeFilter, clientList]);
 
+  // Function to get status style
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'running':
@@ -88,6 +130,23 @@ const Client = ({ navigation }: any) => {
     }
   };
 
+  // Function to get display status text
+  const getDisplayStatus = (packageStatus: string) => {
+    switch (packageStatus) {
+      case 'no_package':
+      case 'not_package':
+        return 'ACTIVE';
+      case 'upcoming':
+        return 'UPCOMING';
+      case 'running':
+        return 'RUNNING';
+      case 'expired':
+        return 'EXPIRED';
+      default:
+        return 'ACTIVE';
+    }
+  };
+
   const getFilterButtonStyle = (filterType: string) => {
     return activeFilter === filterType ? styles.activeFilterButton : styles.inactiveFilterButton;
   };
@@ -98,6 +157,14 @@ const Client = ({ navigation }: any) => {
 
   const getStatusCount = (status: string) => {
     return clientList.filter(client => client.status === status).length;
+  };
+
+  // Function to format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === "0000-00-00") {
+      return 'Not set';
+    }
+    return dateString;
   };
 
   return (
@@ -180,7 +247,10 @@ const Client = ({ navigation }: any) => {
       <Text style={styles.listTitle}>LIST</Text>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#075E4D" style={{ marginTop: 20 }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#075E4D" />
+          <Text style={styles.loadingText}>Loading clients...</Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.listContainer}>
           {filteredClients.length === 0 ? (
@@ -189,14 +259,26 @@ const Client = ({ navigation }: any) => {
               <Text style={styles.emptyStateText}>
                 No {activeFilter === 'all' ? '' : activeFilter} clients found
               </Text>
+              <TouchableOpacity 
+                style={styles.refreshButton}
+                onPress={fetchData}
+              >
+                <MaterialIcons name="refresh" size={20} color="#075E4D" />
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             filteredClients.map((client, index) => {
               const statusStyle = getStatusStyle(client.status);
+              const displayStatus = getDisplayStatus(client.package_status);
+              
               return (
                 <TouchableOpacity
-                  key={index}
-                  style={styles.listItem}
+                  key={client.id || index}
+                  style={[
+                    styles.listItem,
+                    client.renewThisMonth && styles.renewHighlight
+                  ]}
                   onPress={() => navigation.navigate('ClientDetails', { client })}
                 >
                   <View style={styles.listIconBox}>
@@ -204,18 +286,25 @@ const Client = ({ navigation }: any) => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.clientName}>{client.member_name}</Text>
+                    {/* <Text style={styles.clientPhone}>{client.phone || 'No phone'}</Text> */}
                     <View style={styles.dateRow}>
-                      <Ionicons name="calendar-outline" size={16} />
-                      <Text style={styles.dateText}>Start: {client.start_date}</Text>
+                      <Ionicons name="calendar-outline" size={16} color="#666" />
+                      <Text style={styles.dateText}>Start: {formatDate(client.start_date)}</Text>
                     </View>
                     <View style={styles.dateRow2}>
-                      <Ionicons name="calendar-outline" size={16} />
-                      <Text style={styles.dateText}>End: {client.end_date}</Text>
+                      <Ionicons name="calendar-outline" size={16} color="#666" />
+                      <Text style={styles.dateText}>End: {formatDate(client.end_date)}</Text>
                     </View>
+                    {client.renewThisMonth && (
+                      <View style={styles.renewBadge}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#ff6b35" />
+                        <Text style={styles.renewText}>Renews this month</Text>
+                      </View>
+                    )}
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
-                    <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 12 }}>
-                      {client.status.toUpperCase()}
+                    <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 10 }}>
+                      {displayStatus}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -245,6 +334,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     letterSpacing: 1,
+    marginLeft: 10,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -276,7 +366,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
-  // Filter Styles
   filterContainer: {
     marginTop: 20,
     paddingHorizontal: 12,
@@ -336,6 +425,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 3,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  renewHighlight: {
+    borderWidth: 2,
+    borderColor: '#ff6b35',
+    backgroundColor: '#fffaf7',
   },
   listIconBox: {
     backgroundColor: '#f0f0f0',
@@ -346,22 +442,26 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 4,
     color: '#222',
+  },
+  clientPhone: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 6,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    marginBottom: 2,
   },
   dateRow2: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 8,
+    marginBottom: 4,
   },
   dateText: {
-    marginLeft: 4,
+    marginLeft: 6,
     fontSize: 13,
     color: '#444',
   },
@@ -369,6 +469,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  renewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff0eb',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  renewText: {
+    fontSize: 11,
+    color: '#ff6b35',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   emptyState: {
     alignItems: 'center',
@@ -380,5 +508,21 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 10,
     textAlign: 'center',
+    marginBottom: 15,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    color: '#075E4D',
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });

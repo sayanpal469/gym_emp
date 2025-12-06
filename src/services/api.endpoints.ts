@@ -13,7 +13,8 @@ export const APIEndpoints = {
   leave: '/leave_req.php',
   attendanceList: '/emp_attendance.php',
   leaveList: '/leave_request_list.php',
-  pt: '/get_pt_subscriptions.php',
+  // pt: '/get_pt_subscriptions.php',
+  pt: '/employee_pt_list.php',
   createBmi: '/health.php',
   getBmi: '/get_member_bmi.php',
 
@@ -29,6 +30,9 @@ export const APIEndpoints = {
   getEmployeeLeave: '/get_emp_total_leave_by_month.php',
   updateContact: '/update_employee_contact.php',
   changePassword: '/change_password_employee.php',
+
+  // NEW: Trial Assignments API
+  getTrialsByTrainer: '/get_trial_by_trainer.php',
 
   // address:'/update_member_address.php',
   // getBranches:'/all_branches.php',

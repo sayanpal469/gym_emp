@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Image,
   ActivityIndicator,
   Alert,
   StatusBar,
@@ -24,7 +23,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../redux/slices/authSlice';
+import { logout, updateUserContact } from '../redux/slices/authSlice'; // Assuming you have this action
 import { authClient } from '../services/api.clients';
 import { APIEndpoints } from '../services/api.endpoints';
 
@@ -33,7 +32,7 @@ const { height } = Dimensions.get('window');
 const Settings = ({ navigation }: any) => {
   const dispatch = useDispatch();
   const authState = useSelector((state: any) => state.auth);
-  
+
   // Get user initials from name
   const getUserInitials = (name: string) => {
     if (!name) return 'JD';
@@ -43,7 +42,7 @@ const Settings = ({ navigation }: any) => {
   };
 
   const [userData, setUserData] = useState({
-    name: authState.userName || 'John Doe',
+    name: authState.userName || '',
     email: authState.email || '',
     phone: authState.phone || '',
   });
@@ -64,6 +63,23 @@ const Settings = ({ navigation }: any) => {
   const [drawerAnim] = useState(new Animated.Value(height));
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    phone: '',
+  });
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone: string) => {
+    // Remove all non-digit characters
+    const cleanedPhone = phone.replace(/\D/g, '');
+    // Indian phone number validation (10 digits starting with 6-9)
+    const phoneRegex = /^[6-9]\d{9}$/;
+    return phoneRegex.test(cleanedPhone);
+  };
 
   const togglePasswordVisibility = (field: keyof typeof passwordVisibility) => {
     setPasswordVisibility(prev => ({
@@ -93,7 +109,6 @@ const Settings = ({ navigation }: any) => {
         newPassword: '',
         confirmPassword: '',
       });
-      // Reset visibility states when closing drawer
       setPasswordVisibility({
         currentPassword: true,
         newPassword: true,
@@ -102,31 +117,123 @@ const Settings = ({ navigation }: any) => {
     });
   };
 
+  const validateForm = () => {
+    const errors = {
+      email: '',
+      phone: '',
+    };
+
+    let isValid = true;
+
+    // Validate email
+    if (userData.email && !validateEmail(userData.email)) {
+      errors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+
+    
+
+    // Check if at least one field is being updated
+    if (!userData.email && !userData.phone) {
+      Alert.alert('No Changes', 'Please update either email or phone number');
+      return false;
+    }
+
+    setFieldErrors(errors);
+    return isValid;
+  };
+
   const handleSaveProfile = async () => {
     if (!authState.userId) {
-      alert('User ID not found');
+      Alert.alert('Error', 'User ID not found');
+      return;
+    }
+
+    if (!validateForm()) {
       return;
     }
 
     setIsSaving(true);
     try {
-      const payload = {
+      // Prepare payload according to API specification
+      const payload: any = {
         employee_id: authState.userId,
-        email: userData.email,
-        phone: userData.phone.replace(/\D/g, ''), // Remove non-digit characters
       };
 
-      const response = await authClient.post(APIEndpoints.updateContact || '/update_employee_contact.php', payload);
-      
-      if (response.data.status) {
-        alert('Profile updated successfully!');
-        // You might want to update the auth state here with new contact info
+      // Only include fields that have been changed
+      if (userData.email && userData.email !== authState.email) {
+        payload.email = userData.email;
+      }
+
+      if (userData.phone) {
+        const cleanedPhone = userData.phone.replace(/\D/g, '');
+        if (cleanedPhone && cleanedPhone !== authState.phone) {
+          payload.phone = cleanedPhone;
+        }
+      }
+
+      // Check if there are any changes
+      if (!payload.email && !payload.phone) {
+        Alert.alert('No Changes', 'No changes detected to save');
+        setIsSaving(false);
+        return;
+      }
+
+      console.log('Updating contact with payload:', payload);
+
+      const response = await authClient.post(
+        APIEndpoints.updateContact || '/update_employee_contact.php',
+        payload
+      );
+
+      console.log('Update response:', response.data);
+
+      if (response.data.status === true) {
+        Alert.alert('Success', response.data.message || 'Profile updated successfully!');
+        
+        // Update Redux state with new contact info if needed
+        if (response.data.data) {
+          // You might want to dispatch an action to update auth state
+          // dispatch(updateUserContact({
+          //   email: response.data.data.email || userData.email,
+          //   phone: response.data.data.phone_number || userData.phone,
+          // }));
+        }
       } else {
-        alert(response.data.message || 'Failed to update profile');
+        // Handle different error scenarios
+        if (response.data.code === 409) {
+          Alert.alert('Conflict', response.data.message || 'Email or phone already exists');
+        } else if (response.data.code === 404) {
+          Alert.alert('Not Found', response.data.message || 'Employee record not found');
+        } else if (response.data.code === 400) {
+          Alert.alert('Bad Request', response.data.message || 'Please check your input');
+        } else {
+          Alert.alert('Error', response.data.message || 'Failed to update profile');
+        }
       }
     } catch (error: any) {
       console.error('Update contact error:', error);
-      alert(error.response?.data?.message || 'Failed to update profile');
+      
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        
+        if (error.response.status === 400) {
+          Alert.alert('Bad Request', error.response.data?.message || 'Please check your input');
+        } else if (error.response.status === 404) {
+          Alert.alert('Not Found', error.response.data?.message || 'Employee record not found');
+        } else if (error.response.status === 409) {
+          Alert.alert('Conflict', error.response.data?.message || 'Email or phone already exists');
+        } else if (error.response.status === 500) {
+          Alert.alert('Server Error', 'Failed to update contact details. Please try again later.');
+        } else {
+          Alert.alert('Error', error.response.data?.message || 'Failed to update profile');
+        }
+      } else if (error.request) {
+        Alert.alert('Network Error', 'No response from server. Please check your connection.');
+      } else {
+        Alert.alert('Error', 'Failed to update profile');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -134,18 +241,23 @@ const Settings = ({ navigation }: any) => {
 
   const handleChangePassword = async () => {
     // Validate passwords
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      Alert.alert('Error', 'Please fill all password fields');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords don't match");
+      Alert.alert('Error', "New passwords don't match");
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      alert("Password must be at least 6 characters");
+      Alert.alert('Error', "Password must be at least 6 characters");
       return;
     }
 
     if (!authState.userId) {
-      alert('User ID not found');
+      Alert.alert('Error', 'User ID not found');
       return;
     }
 
@@ -157,22 +269,32 @@ const Settings = ({ navigation }: any) => {
         new_password: passwordData.newPassword,
       };
 
-      const response = await authClient.post(APIEndpoints.changePassword || '/change_password_employee.php', payload);
-      
-      if (response.data.status) {
-        alert('Password changed successfully!');
+      const response = await authClient.post(
+        APIEndpoints.changePassword || '/change_password_employee.php',
+        payload
+      );
+
+      if (response.data.status === true) {
+        Alert.alert('Success', response.data.message || 'Password changed successfully!');
         closePasswordDrawer();
       } else {
-        alert(response.data.message || 'Failed to change password');
+        if (response.data.code === 401) {
+          Alert.alert('Error', 'Incorrect current password');
+        } else {
+          Alert.alert('Error', response.data.message || 'Failed to change password');
+        }
       }
     } catch (error: any) {
       console.error('Change password error:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to change password';
       
       if (error.response?.status === 401) {
-        alert('Incorrect current password');
+        Alert.alert('Error', 'Incorrect current password');
+      } else if (error.response?.status === 400) {
+        Alert.alert('Error', error.response.data?.message || 'Invalid input');
+      } else if (error.response?.status === 404) {
+        Alert.alert('Error', 'Employee not found');
       } else {
-        alert(errorMessage);
+        Alert.alert('Error', error.response?.data?.message || 'Failed to change password');
       }
     } finally {
       setIsUpdatingPassword(false);
@@ -193,7 +315,6 @@ const Settings = ({ navigation }: any) => {
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
-            // Navigate to login screen or perform any other cleanup
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }],
@@ -236,6 +357,7 @@ const Settings = ({ navigation }: any) => {
               </Text>
             </View>
             <Text style={styles.changePhotoText}>{userData.name}</Text>
+            <Text style={styles.roleText}>{authState.role || 'Employee'}</Text>
           </View>
 
           {/* Form Section */}
@@ -257,32 +379,59 @@ const Settings = ({ navigation }: any) => {
             {/* Email Field */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputWrapper}>
+              <View style={[
+                styles.inputWrapper,
+                fieldErrors.email ? styles.inputError : {}
+              ]}>
                 <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.textInput}
                   value={userData.email}
-                  onChangeText={(text) => setUserData({ ...userData, email: text })}
-                  placeholder="Enter your email"
+                  onChangeText={(text) => {
+                    setUserData({ ...userData, email: text });
+                    if (fieldErrors.email) {
+                      setFieldErrors({ ...fieldErrors, email: '' });
+                    }
+                  }}
+                  placeholder={authState.email || "Enter your email"}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
               </View>
+              {fieldErrors.email ? (
+                <Text style={styles.errorText}>{fieldErrors.email}</Text>
+              ) : (
+                <Text style={styles.noteText}>Leave blank if you don't want to change email</Text>
+              )}
             </View>
 
             {/* Phone Field */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Phone Number</Text>
-              <View style={styles.inputWrapper}>
+              <View style={[
+                styles.inputWrapper,
+                fieldErrors.phone ? styles.inputError : {}
+              ]}>
                 <Feather name="phone" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.textInput}
                   value={userData.phone}
-                  onChangeText={(text) => setUserData({ ...userData, phone: text })}
-                  placeholder="Enter your phone number"
+                  onChangeText={(text) => {
+                    setUserData({ ...userData, phone: text });
+                    if (fieldErrors.phone) {
+                      setFieldErrors({ ...fieldErrors, phone: '' });
+                    }
+                  }}
+                  placeholder={authState.phone || "Enter your phone number"}
                   keyboardType="phone-pad"
+                  maxLength={10}
                 />
               </View>
+              {fieldErrors.phone ? (
+                <Text style={styles.errorText}>{fieldErrors.phone}</Text>
+              ) : (
+                <Text style={styles.noteText}>Leave blank if you don't want to change phone</Text>
+              )}
             </View>
 
             {/* Change Password Button */}
@@ -335,7 +484,7 @@ const Settings = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
               style={styles.drawerScrollView}
               contentContainerStyle={styles.drawerScrollContent}
               showsVerticalScrollIndicator={false}
@@ -390,6 +539,7 @@ const Settings = ({ navigation }: any) => {
                       />
                     </TouchableOpacity>
                   </View>
+                  <Text style={styles.noteText}>Password must be at least 6 characters</Text>
                 </View>
 
                 {/* Confirm Password */}
@@ -494,32 +644,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
-  imageWrapper: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  editImageButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#075E4D',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
   changePhotoText: {
     color: '#333',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  roleText: {
+    color: '#666',
+    fontSize: 14,
   },
   formContainer: {
     padding: 20,
@@ -542,6 +675,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#fff',
   },
+  inputError: {
+    borderColor: '#FF3B30',
+    borderWidth: 2,
+  },
   disabledInput: {
     backgroundColor: '#f9f9f9',
   },
@@ -557,15 +694,20 @@ const styles = StyleSheet.create({
   disabledText: {
     color: '#666',
   },
-  visibilityToggle: {
-    padding: 8,
-    marginLeft: 4,
+  errorText: {
+    fontSize: 12,
+    color: '#FF3B30',
+    marginTop: 4,
   },
   noteText: {
     fontSize: 12,
-    color: '#999',
-    marginTop: 6,
+    color: '#666',
+    marginTop: 4,
     fontStyle: 'italic',
+  },
+  visibilityToggle: {
+    padding: 8,
+    marginLeft: 4,
   },
   changePasswordButton: {
     flexDirection: 'row',
@@ -609,7 +751,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%', // Increased max height
+    maxHeight: '80%',
   },
   drawerKeyboardAvoidingView: {
     flex: 1,
@@ -619,7 +761,7 @@ const styles = StyleSheet.create({
   },
   drawerScrollContent: {
     flexGrow: 1,
-    paddingBottom: 30, // Extra padding at bottom
+    paddingBottom: 30,
   },
   drawerHeader: {
     flexDirection: 'row',
@@ -643,7 +785,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 10, // Added margin bottom for better spacing
+    marginBottom: 10,
   },
   disabledButton: {
     backgroundColor: '#cccccc',
