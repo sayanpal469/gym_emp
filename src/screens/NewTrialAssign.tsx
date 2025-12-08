@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     SafeAreaView,
     View,
@@ -13,29 +13,70 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTrialService } from '../hooks/useTrialService';
+
 const screenWidth = Dimensions.get('window').width;
-const PRIMARY_COLOR = '#075e4d';
+const PRIMARY_COLOR = '#075E4D';
 const SECONDARY_COLOR = '#0a7a63';
-const LIGHT_BG = '#e8f5f2';
+const LIGHT_BG = '#f8faf9';
 const CARD_BG = '#ffffff';
 
+interface Trial {
+    id: number;
+    member_id: number;
+    trainer_id: number;
+    trainer_name: string;
+    trial_date: string;
+    trial_time: string | null;
+    note: string | null;
+    status: number;
+    created_at: string;
+    member_name: string;
+    phone: string;
+    status_name: string;
+}
+
 const NewTrialAssign = ({ navigation }: any) => {
-    const {
-        loading,
-        error,
-        trials,
-        refetch
-    } = useTrialService();
+    const { loading, error, trials, refetch } = useTrialService();
+    const [refreshing, setRefreshing] = useState(false);
+    const [reloading, setReloading] = useState(false);
+    const [trialData, setTrialData] = useState<Trial[]>([]);
 
-    const [refreshing, setRefreshing] = React.useState(false);
+    const fetchTrialsData = async () => {
+        try {
+            const result = await refetch();
+            if (result && result.data) {
+                setTrialData(result.data);
+            } else {
+                setTrialData([]);
+            }
+        } catch (err) {
+            console.error('Error fetching trial data:', err);
+            setTrialData([]);
+        }
+    };
 
-    const onRefresh = React.useCallback(async () => {
+    const onRefresh = async () => {
         setRefreshing(true);
-        await refetch();
+        await fetchTrialsData();
+        // Ensure minimum 1 second loading time for better UX
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setRefreshing(false);
-    }, [refetch]);
+    };
+
+    const onReload = async () => {
+        setReloading(true);
+        await fetchTrialsData();
+        // Ensure minimum 1 second loading time for better UX
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setReloading(false);
+    };
+
+    useEffect(() => {
+        fetchTrialsData();
+    }, []);
 
     // Format date for display
     const formatDate = (dateString: string) => {
@@ -47,12 +88,79 @@ const NewTrialAssign = ({ navigation }: any) => {
         });
     };
 
-    // Get status badge color
-    const getStatusColor = (status: number, statusName: string) => {
-        if (status === 1) return { bg: '#e8f5f2', text: PRIMARY_COLOR, label: statusName || 'Pending' };
-        if (status === 2) return { bg: '#fff3cd', text: '#856404', label: 'Confirmed' };
-        if (status === 3) return { bg: '#d4edda', text: '#155724', label: 'Completed' };
-        return { bg: '#f8d7da', text: '#721c24', label: 'Cancelled' };
+    // Format time if available
+    const formatTime = (timeString: string | null) => {
+        if (!timeString) return 'Time not set';
+
+        try {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const formattedHour = hour % 12 || 12;
+            return `${formattedHour}:${minutes} ${ampm}`;
+        } catch (err) {
+            return timeString;
+        }
+    };
+
+    // Get status badge color and icon
+    const getStatusInfo = (status: number, statusName: string) => {
+        switch (status) {
+            case 1: // Assigned (Assuming 1 is Assigned)
+                return {
+                    bg: '#e8f5f2',
+                    text: PRIMARY_COLOR,
+                    icon: 'clock',
+                    iconColor: PRIMARY_COLOR,
+                    label: statusName || 'Assigned'
+                };
+            case 2: // Completed (from your data example)
+                return {
+                    bg: '#d4edda',
+                    text: '#155724',
+                    icon: 'checkmark-done-circle',
+                    iconColor: '#155724',
+                    label: statusName || 'Completed'
+                };
+            case 3: // Confirmed (Assuming 3 is Confirmed)
+                return {
+                    bg: '#fff3cd',
+                    text: '#b68c04',
+                    icon: 'check-circle',
+                    iconColor: '#b68c04',
+                    label: 'Confirmed'
+                };
+            default: // Cancelled or other
+                return {
+                    bg: '#f8d7da',
+                    text: '#721c24',
+                    icon: 'close-circle',
+                    iconColor: '#721c24',
+                    label: statusName || 'Cancelled'
+                };
+        }
+    };
+
+    const getInitials = (name: string) => {
+        if (!name) return '??';
+
+        return name
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2);
+    };
+
+    // Count trials by status
+    const getAssignedCount = () => {
+        return trialData.filter(trial => trial.status === 1).length;
+    };
+
+    // Count completed trials
+    const getCompletedCount = () => {
+        return trialData.filter(trial => trial.status === 2).length;
     };
 
     return (
@@ -74,9 +182,21 @@ const NewTrialAssign = ({ navigation }: any) => {
                         <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
                     </TouchableOpacity>
                     <View style={styles.headerTextContainer}>
-                        <Text style={styles.title}>New Trial Assignments</Text>
-                        <Text style={styles.subtitle}>Track and manage trials</Text>
+                        <Text style={styles.title}>New Trial</Text>
+                        <Text style={styles.subtitle}>Track and manage trial sessions</Text>
                     </View>
+                    <TouchableOpacity
+                        onPress={onReload}
+                        style={[styles.reloadButton, reloading && styles.disabledButton]}
+                        disabled={reloading}
+                    >
+                        <MaterialIcons
+                            name="refresh"
+                            size={24}
+                            color={reloading ? "#ccc" : "#fff"}
+                            style={reloading ? styles.rotatingIcon : null}
+                        />
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
 
@@ -90,133 +210,158 @@ const NewTrialAssign = ({ navigation }: any) => {
                         onRefresh={onRefresh}
                         colors={[PRIMARY_COLOR]}
                         tintColor={PRIMARY_COLOR}
+                        progressBackgroundColor="#fff"
                     />
                 }
             >
+                {/* Summary Cards */}
+                <View style={styles.summaryContainer}>
+                    <LinearGradient
+                        colors={['#e8f5f2', '#d4f0e9']}
+                        style={styles.summaryCard}
+                    >
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="briefcase" size={24} color={PRIMARY_COLOR} />
+                        </View>
+                        <Text style={styles.summaryValue}>{trialData.length}</Text>
+                        <Text style={styles.summaryLabel}>Total Trials</Text>
+                    </LinearGradient>
+
+                    <LinearGradient
+                        colors={['#e8f5f2', '#d4f0e9']}
+                        style={styles.summaryCard}
+                    >
+                        <View style={styles.iconCircle}>
+                            <FontAwesome5 name="user-check" size={20} color={PRIMARY_COLOR} />
+                        </View>
+                        <Text style={styles.summaryValue}>
+                            {getAssignedCount()}
+                        </Text>
+                        <Text style={styles.summaryLabel}>Assigned</Text>
+                    </LinearGradient>
+
+                    <LinearGradient
+                        colors={['#e8f5f2', '#d4f0e9']}
+                        style={styles.summaryCard}
+                    >
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="checkmark-done-circle" size={24} color={PRIMARY_COLOR} />
+                        </View>
+                        <Text style={styles.summaryValue}>
+                            {getCompletedCount()}
+                        </Text>
+                        <Text style={styles.summaryLabel}>Completed</Text>
+                    </LinearGradient>
+                </View>
+
+                {/* Recent Assignments Section */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Recent Assignments</Text>
+                    <View style={styles.sectionDivider} />
+                </View>
+
                 {loading && !refreshing ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-                        <Text style={styles.loadingText}>Loading trials...</Text>
-                    </View>
-                ) : error ? (
-                    <View style={styles.errorContainer}>
-                        <Ionicons name="alert-circle-outline" size={64} color="#f44336" />
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={() => refetch()}
-                        >
-                            <Text style={styles.retryButtonText}>Retry</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.loadingText}>Loading trial assignments...</Text>
                     </View>
                 ) : (
                     <>
-                        {/* Summary Cards Row */}
-                        <View style={styles.summaryContainer}>
-                            <View style={styles.summaryCard}>
-                                <View style={styles.iconCircle}>
-                                    <Ionicons name="people" size={24} color={PRIMARY_COLOR} />
-                                </View>
-                                <Text style={styles.summaryValue}>{trials.length}</Text>
-                                <Text style={styles.summaryLabel}>Total Trials</Text>
-                            </View>
-
-                            <View style={styles.summaryCard}>
-                                <View style={styles.iconCircle}>
-                                    <Ionicons name="checkmark-done" size={24} color={PRIMARY_COLOR} />
-                                </View>
-                                <Text style={styles.summaryValue}>
-                                    {trials.filter(t => t.status === 1).length}
-                                </Text>
-                                <Text style={styles.summaryLabel}>Pending</Text>
-                            </View>
-                        </View>
-
-                        {/* Section Header */}
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Recent Assignments</Text>
-                            <View style={styles.sectionDivider} />
-                        </View>
-
                         {/* Trial Assignments List */}
-                        {trials.map((trial, index) => {
-                            const status = getStatusColor(trial.status, trial.status_name);
+                        {trialData.length > 0 ? (
+                            trialData.map((trial) => {
+                                const statusInfo = getStatusInfo(trial.status, trial.status_name);
 
-                            return (
-                                <TouchableOpacity
-                                    key={trial.id}
-                                    style={styles.listItem}
-                                    activeOpacity={0.7}
-                                // onPress={() => navigation.navigate('TrialAssignmentDetail', { trial })}
-                                >
-                                    {/* Left Color Accent based on status */}
-                                    <View style={[
-                                        styles.itemAccent,
-                                        { backgroundColor: status.text }
-                                    ]} />
-
-                                    {/* Avatar Circle */}
-                                    <View style={styles.avatarContainer}>
-                                        <LinearGradient
-                                            colors={[PRIMARY_COLOR, SECONDARY_COLOR]}
-                                            style={styles.avatarGradient}
-                                        >
-                                            <Text style={styles.avatarText}>
-                                                {trial.member_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                            </Text>
-                                        </LinearGradient>
-                                    </View>
-
-                                    {/* Content */}
-                                    <View style={styles.listContent}>
-                                        <View style={styles.nameRow}>
-                                            <Text style={styles.memberName}>{trial.member_name}</Text>
-                                            <View style={[
-                                                styles.badge,
-                                                { backgroundColor: status.bg }
-                                            ]}>
-                                                <Text style={[
-                                                    styles.badgeText,
-                                                    { color: status.text }
-                                                ]}>{status.label}</Text>
+                                return (
+                                    <View key={trial.id} style={styles.card}>
+                                        {/* Card Header */}
+                                        <View style={styles.cardHeader}>
+                                            <View style={styles.avatarContainer}>
+                                                <LinearGradient
+                                                    colors={[PRIMARY_COLOR, SECONDARY_COLOR]}
+                                                    style={styles.avatarGradient}
+                                                >
+                                                    <Text style={styles.avatarText}>
+                                                        {getInitials(trial.member_name)}
+                                                    </Text>
+                                                </LinearGradient>
                                             </View>
+                                            <View style={styles.nameContainer}>
+                                                <Text style={styles.memberName} numberOfLines={1}>
+                                                    {trial.member_name}
+                                                </Text>
+
+                                                <View style={styles.detailsRow}>
+
+
+                                                    <View style={styles.detailItem}>
+                                                        <MaterialIcons name="person" size={14} color="#666" />
+                                                        <Text style={styles.detailText}>{trial.trainer_name}</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+
                                         </View>
 
-                                        <View style={styles.detailsContainer}>
-                                            <View style={styles.detailRow}>
-                                                <View style={styles.detailIconWrapper}>
-                                                    <Ionicons name="calendar" size={14} color={PRIMARY_COLOR} />
-                                                </View>
-                                                <Text style={styles.detailLabel}>Trial Date:</Text>
-                                                <Text style={styles.detailValue}>{formatDate(trial.trial_date)}</Text>
+                                        {/* Trial Date and Time */}
+                                        <View style={styles.dateTimeContainer}>
+                                            <View style={styles.dateTimeItem}>
+                                                <MaterialIcons name="calendar-today" size={16} color="#666" />
+                                                <Text style={styles.dateTimeLabel}>Date:</Text>
+                                                <Text style={styles.dateTimeValue}>{formatDate(trial.trial_date)}</Text>
                                             </View>
 
-                                            <View style={styles.detailRow}>
-                                                <View style={styles.detailIconWrapper}>
-                                                    <Ionicons name="call" size={14} color={PRIMARY_COLOR} />
+                                            {trial.trial_time && (
+                                                <View style={styles.dateTimeItem}>
+                                                    <MaterialIcons name="access-time" size={16} color="#666" />
+                                                    <Text style={styles.dateTimeLabel}>Time:</Text>
+                                                    <Text style={styles.dateTimeValue}>{formatTime(trial.trial_time)}</Text>
                                                 </View>
-                                                <Text style={styles.detailLabel}>Phone:</Text>
-                                                <Text style={styles.detailValue}>{trial.phone}</Text>
+                                            )}
+                                        </View>
+
+                                        {/* Status Bar at Bottom */}
+                                        <View style={[styles.statusBar, { backgroundColor: statusInfo.bg }]}>
+                                            <View style={styles.statusContent}>
+                                                <Ionicons
+                                                    name={statusInfo.icon as any}
+                                                    size={16}
+                                                    color={statusInfo.text}
+                                                    style={styles.statusIcon}
+                                                />
+                                                <Text style={[styles.statusText, { color: statusInfo.text }]}>
+                                                    {statusInfo.label}
+                                                </Text>
                                             </View>
+
+                                            {/* Note indicator if note exists */}
+                                            {trial.note && (
+                                                <View style={styles.noteIndicator}>
+                                                    <MaterialIcons name="sticky-note-2" size={16} color="#666" />
+                                                    <Text style={styles.noteText}>Has note</Text>
+                                                </View>
+                                            )}
                                         </View>
                                     </View>
-
-                                    {/* Arrow Icon */}
-                                    <MaterialIcons name="chevron-right" size={24} color="#ccc" />
-                                </TouchableOpacity>
-                            );
-                        })}
-
-                        {/* Empty State */}
-                        {trials.length === 0 && (
+                                );
+                            })
+                        ) : (
+                            /* Empty State */
                             <View style={styles.emptyState}>
-                                <Ionicons name="clipboard-outline" size={64} color="#ccc" />
-                                <Text style={styles.emptyText}>No trial assignments yet</Text>
+                                <View style={styles.emptyIconContainer}>
+                                    <Ionicons name="clipboard-outline" size={64} color="#E0E0E0" />
+                                </View>
+                                <Text style={styles.emptyTitle}>No trial assignments</Text>
+                                <Text style={styles.emptySubtitle}>
+                                    You don't have any trial assignments at the moment
+                                </Text>
                                 <TouchableOpacity
-                                    style={styles.refreshButton}
-                                    onPress={() => refetch()}
+                                    onPress={onRefresh}
+                                    style={styles.retryButton}
+                                    activeOpacity={0.8}
                                 >
-                                    <Text style={styles.refreshButtonText}>Refresh</Text>
+                                    <MaterialIcons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
+                                    <Text style={styles.retryText}>Refresh</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -239,68 +384,85 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
-        elevation: 4,
+        elevation: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 10,
+        marginTop: StatusBar.currentHeight || 0,
     },
     backButton: {
         padding: 8,
         marginRight: 8,
+        borderRadius: 10,
+        // backgroundColor: 'rgba(255,255,255,0.1)',
     },
     headerTextContainer: {
         flex: 1,
     },
     title: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '700',
         color: '#fff',
         letterSpacing: 0.5,
     },
     subtitle: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: 2,
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.85)',
+        marginTop: 4,
+    },
+    reloadButton: {
+        padding: 8,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+    disabledButton: {
+        opacity: 0.5,
+    },
+    rotatingIcon: {
+        transform: [{ rotate: '360deg' }],
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 20,
+        paddingBottom: 40,
     },
     summaryContainer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingTop: 20,
+        paddingTop: 24,
         gap: 12,
     },
     summaryCard: {
         flex: 1,
-        backgroundColor: CARD_BG,
-        borderRadius: 16,
+        borderRadius: 20,
         padding: 16,
         alignItems: 'center',
-        elevation: 2,
+        elevation: 4,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(7, 94, 77, 0.1)',
     },
     iconCircle: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: LIGHT_BG,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 10,
+        borderWidth: 2,
+        borderColor: 'rgba(7, 94, 77, 0.2)',
     },
     summaryValue: {
         fontSize: 28,
@@ -310,167 +472,211 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 12,
-        color: '#666',
-        fontWeight: '500',
+        color: '#555',
+        fontWeight: '600',
+        textAlign: 'center',
     },
     sectionHeader: {
         paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 12,
+        paddingTop: 28,
+        paddingBottom: 16,
     },
     sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1a1a1a',
+        marginBottom: 10,
     },
     sectionDivider: {
-        height: 3,
-        width: 40,
+        height: 4,
+        width: 50,
         backgroundColor: PRIMARY_COLOR,
         borderRadius: 2,
     },
-    listItem: {
-        flexDirection: 'row',
+    card: {
         backgroundColor: CARD_BG,
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 20,
         marginHorizontal: 16,
-        marginBottom: 12,
+        marginBottom: 16,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        padding: 16,
+        alignItems: 'center',
+    },
+    avatarContainer: {
+        marginRight: 16,
+    },
+    avatarGradient: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
         alignItems: 'center',
         elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
-        overflow: 'hidden',
-    },
-    itemAccent: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 4,
-    },
-    avatarContainer: {
-        marginRight: 14,
-        marginLeft: 4,
-    },
-    avatarGradient: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        justifyContent: 'center',
-        alignItems: 'center',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     avatarText: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
         color: '#fff',
     },
-    listContent: {
+    nameContainer: {
         flex: 1,
-    },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10,
     },
     memberName: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
         color: '#1a1a1a',
-        flex: 1,
+        marginBottom: 8,
     },
-    badge: {
+    detailsRow: {
+        gap: 12,
+    },
+    detailItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    detailText: {
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+    },
+    idBadge: {
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
-        borderWidth: 1,
+        backgroundColor: '#f5f5f5',
+        alignSelf: 'flex-start',
     },
-    badgeText: {
-        fontSize: 11,
+    idText: {
+        fontSize: 12,
+        color: '#888',
         fontWeight: '600',
     },
-    detailsContainer: {
-        gap: 6,
+    dateTimeContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        gap: 8,
     },
-    detailRow: {
+    dateTimeItem: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
-    detailIconWrapper: {
-        width: 20,
-        alignItems: 'center',
-        marginRight: 6,
-    },
-    detailLabel: {
+    dateTimeLabel: {
         fontSize: 13,
         color: '#666',
-        marginRight: 6,
         fontWeight: '500',
+        minWidth: 40,
     },
-    detailValue: {
-        fontSize: 13,
+    dateTimeValue: {
+        fontSize: 14,
         color: '#333',
         fontWeight: '600',
+        flex: 1,
     },
-    emptyState: {
+    statusBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 60,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
     },
-    emptyText: {
-        fontSize: 16,
-        color: '#999',
-        marginTop: 16,
-        marginBottom: 16,
+    statusContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    statusIcon: {
+        marginRight: 4,
+    },
+    statusText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    noteIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.8)',
+    },
+    noteText: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: '500',
     },
     loadingContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 60,
+        paddingVertical: 80,
     },
     loadingText: {
         marginTop: 16,
         fontSize: 16,
         color: '#666',
+        fontWeight: '500',
     },
-    errorContainer: {
+    emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 60,
+        paddingTop: 60,
+        paddingHorizontal: 40,
     },
-    errorText: {
-        fontSize: 16,
-        color: '#f44336',
-        textAlign: 'center',
-        marginTop: 16,
+    emptyIconContainer: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 50,
+        padding: 24,
         marginBottom: 20,
-        paddingHorizontal: 20,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1A1A1A',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 32,
     },
     retryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: PRIMARY_COLOR,
         paddingHorizontal: 24,
         paddingVertical: 12,
-        borderRadius: 8,
+        borderRadius: 25,
+        shadowColor: PRIMARY_COLOR,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    retryButtonText: {
+    retryText: {
         color: '#fff',
-        fontWeight: '600',
         fontSize: 14,
-    },
-    refreshButton: {
-        backgroundColor: PRIMARY_COLOR,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 8,
-        marginTop: 10,
-    },
-    refreshButtonText: {
-        color: '#fff',
         fontWeight: '600',
-        fontSize: 14,
+        letterSpacing: 0.5,
     },
 });

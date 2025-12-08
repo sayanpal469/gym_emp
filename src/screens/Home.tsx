@@ -24,8 +24,10 @@ const HomeScreen = () => {
   const { fetchTrialsByTrainer, loading: trialLoading, trials } = useTrialService();
   
   const [ptRenewClients, setPtRenewClients] = useState<any[]>([]);
-  const [lastTrials, setLastTrials] = useState<any[]>([]);
-  const [newTrials, setNewTrials] = useState<any[]>([]);
+  const [lastTrial, setLastTrial] = useState<any>(null);
+  const [newTrial, setNewTrial] = useState<any>(null);
+  const [hasTrialsData, setHasTrialsData] = useState(false);
+  const [totalTrialsCount, setTotalTrialsCount] = useState(0);
 
   useEffect(() => {
     changeNavigationBarColor('#ffffff', true);
@@ -50,19 +52,42 @@ const HomeScreen = () => {
       
       // Fetch Trial data
       const trialRes = await fetchTrialsByTrainer();
-      if (trialRes.success && trialRes.data && trialRes.data.length > 0) {
+      if (trialRes.success && trialRes.data) {
         const trialData = trialRes.data;
+        setTotalTrialsCount(trialData.length);
         
-        // Get last 2 trials (most recent)
-        const lastTwoTrials = trialData.slice(-2).reverse(); // Reverse to show most recent first
-        setLastTrials(lastTwoTrials);
-        
-        // Get first 2 trials (oldest/upcoming)
-        const firstTwoTrials = trialData.slice(0, 2);
-        setNewTrials(firstTwoTrials);
+        if (trialData.length > 0) {
+          setHasTrialsData(true);
+          
+          // Sort trials by date (most recent first)
+          const sortedTrials = [...trialData].sort((a, b) => 
+            new Date(b.trial_date).getTime() - new Date(a.trial_date).getTime()
+          );
+          
+          // Find the most recent COMPLETED trial (status_name = 'Completed' or status = 2)
+          const completedTrial = sortedTrials.find((trial: any) => 
+            trial.status_name === 'Completed' || trial.status === 2
+          );
+          setLastTrial(completedTrial || null);
+          
+          // Find the most recent PENDING/ASSIGNED trial (status_name = 'Pending'/'Assigned' or status = 0/1)
+          const pendingAssignedTrial = sortedTrials.find((trial: any) => 
+            trial.status_name === 'Pending' || trial.status_name === 'Assigned' || 
+            trial.status === 0 || trial.status === 1
+          );
+          setNewTrial(pendingAssignedTrial || null);
+        } else {
+          setHasTrialsData(false);
+          setTotalTrialsCount(0);
+        }
+      } else {
+        setHasTrialsData(false);
+        setTotalTrialsCount(0);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setHasTrialsData(false);
+      setTotalTrialsCount(0);
     }
   };
 
@@ -127,18 +152,48 @@ const HomeScreen = () => {
     }
   };
 
-  // Function to format date for display
+  // Function to format date for display (dd-mm-yy)
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === "0000-00-00") {
       return 'Not set';
     }
-    return dateString;
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return dateString; // Return original if invalid
+      }
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear().toString().slice(-2);
+      
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
   };
 
-  // Function to format trial date
+  // Function to format trial date (dd-mm-yy)
   const formatTrialDate = (dateString: string) => {
     if (!dateString) return 'Not set';
-    return dateString;
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return dateString; // Return original if invalid
+      }
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear().toString().slice(-2);
+      
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      console.error('Error formatting trial date:', error);
+      return dateString;
+    }
   };
 
   return (
@@ -218,97 +273,77 @@ const HomeScreen = () => {
                 <Text style={styles.listDate}>Loading trials...</Text>
               </View>
             </View>
-          ) : lastTrials.length > 0 ? (
-            lastTrials.map((trial, index) => (
-              <TouchableOpacity
-                key={trial.id || index}
-                style={styles.listItem}
-                onPress={() => navigation.navigate('TrialDetails', { trial })}
-              >
-                <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
-                  <Ionicons name="calendar-outline" size={20} color="#fff" />
-                </View>
-                <View style={styles.listContent}>
-                  <Text style={styles.listName}>{trial.member_name}</Text>
-                  <Text style={styles.listSubText}>Date: {formatTrialDate(trial.trial_date)}</Text>
-                  <Text style={styles.listSubText}>Status: {trial.status_name}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
+          ) : lastTrial ? (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => navigation.navigate('TrialDetails', { trial: lastTrial })}
+            >
+              <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                <Ionicons name="calendar-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.listContent}>
+                <Text style={styles.listName}>{lastTrial.member_name}</Text>
+                <Text style={styles.listSubText}>Date: {formatTrialDate(lastTrial.trial_date)}</Text>
+                {/* Status is removed from Last Trial Assigned as requested */}
+              </View>
+            </TouchableOpacity>
           ) : (
             <View style={styles.listItem}>
               <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                <Ionicons name="information-outline" size={20} color="#fff" />
+                {/* Changed from information-outline to alert-circle-outline */}
+                <Ionicons name="alert-circle-outline" size={20} color="#fff" />
               </View>
               <View style={styles.listContent}>
-                <Text style={styles.listDate}>No recent trials assigned</Text>
+                <Text style={styles.listDate}>No trials assigned</Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* New Trial Assign - Show for all roles */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>NEW TRIAL ASSIGN</Text>
-            {isTrainer && newTrials.length > 0 && (
-              <TouchableOpacity onPress={handleNewTrialViewAll}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {/* New Trial Assign - Show only if there is data */}
+        {hasTrialsData && newTrial && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              {/* Added total trial count in the section title */}
+              <Text style={styles.sectionTitle}>NEW TRIAL ASSIGN ({totalTrialsCount})</Text>
+              {isTrainer && newTrial && (
+                <TouchableOpacity onPress={handleNewTrialViewAll}>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-          {!isTrainer ? (
-            <View style={styles.listItem}>
-              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                <Ionicons name="close-circle-outline" size={20} color="#fff" />
+            {trialLoading ? (
+              <View style={styles.listItem}>
+                <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
+                  <MaterialCommunityIcons name="loading" size={20} color="#fff" />
+                </View>
+                <View style={styles.listContent}>
+                  <Text style={styles.listDate}>Loading trials...</Text>
+                </View>
               </View>
-              <View style={styles.listContent}>
-                <Text style={styles.listDate}>Not Applicable</Text>
-              </View>
-            </View>
-          ) : trialLoading ? (
-            <View style={styles.listItem}>
-              <View style={[styles.listIcon, { backgroundColor: '#075E4D' }]}>
-                <MaterialCommunityIcons name="loading" size={20} color="#fff" />
-              </View>
-              <View style={styles.listContent}>
-                <Text style={styles.listDate}>Loading trials...</Text>
-              </View>
-            </View>
-          ) : newTrials.length > 0 ? (
-            newTrials.map((trial, index) => (
+            ) : newTrial ? (
               <TouchableOpacity
-                key={trial.id || index}
                 style={styles.listItem}
-                onPress={() => navigation.navigate('TrialDetails', { trial })}
+                onPress={() => navigation.navigate('TrialDetails', { trial: newTrial })}
               >
                 <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
                   <Ionicons name="calendar-outline" size={20} color="#fff" />
                 </View>
                 <View style={styles.listContent}>
-                  <Text style={styles.listName}>{trial.member_name}</Text>
-                  <Text style={styles.listSubText}>Date: {formatTrialDate(trial.trial_date)}</Text>
-                  <Text style={styles.listSubText}>Status: {trial.status_name}</Text>
+                  <Text style={styles.listName}>{newTrial.member_name}</Text>
+                  <Text style={styles.listSubText}>Date: {formatTrialDate(newTrial.trial_date)}</Text>
+                  <Text style={styles.listSubText}>Status: {newTrial.status_name}</Text>
                 </View>
               </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.listItem}>
-              <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                <Ionicons name="information-outline" size={20} color="#fff" />
-              </View>
-              <View style={styles.listContent}>
-                <Text style={styles.listDate}>No upcoming trials assigned</Text>
-              </View>
-            </View>
-          )}
-        </View>
+            ) : null}
+          </View>
+        )}
 
         {/* PT Renew - Show for all roles */}
         <View style={[styles.section, { marginBottom: 100 }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>PT RENEW</Text>
+            <Text style={styles.sectionTitle}>PT RENEW {ptRenewClients.length > 0 ? `(${ptRenewClients.length})` : ''}</Text>
             {isTrainer && ptRenewClients.length > 0 && (
               <TouchableOpacity onPress={handlePTRenewViewAll}>
                 <Text style={styles.viewAllText}>View All</Text>
@@ -364,7 +399,8 @@ const HomeScreen = () => {
           ) : (
             <View style={styles.listItem}>
               <View style={[styles.listIcon, { backgroundColor: '#6B7280' }]}>
-                <MaterialCommunityIcons name="information-outline" size={20} color="#fff" />
+                {/* Changed from information-outline to alert-circle-outline */}
+                <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#fff" />
               </View>
               <View style={styles.listContent}>
                 <Text style={styles.listDate}>No PT clients assigned</Text>

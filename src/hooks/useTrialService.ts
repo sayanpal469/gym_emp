@@ -61,22 +61,22 @@ export const useTrialService = () => {
       if (response.data?.status === true) {
         setTrials(response.data.data);
 
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: response.data.message || 'Trials fetched successfully',
-        });
+        // Toast.show({
+        //   type: 'success',
+        //   text1: 'Success',
+        //   text2: response.data.message || 'Trials fetched successfully',
+        // });
 
         return { success: true, data: response.data.data };
       } else {
         const errMsg = response.data?.message || 'Failed to fetch trials';
         setError(errMsg);
 
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: errMsg,
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Error',
+        //   text2: errMsg,
+        // });
 
         return { success: false, data: [] };
       }
@@ -84,11 +84,11 @@ export const useTrialService = () => {
       const errMsg = err?.response?.data?.message || 'Something went wrong';
       setError(errMsg);
 
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errMsg,
-      });
+      // Toast.show({
+      //   type: 'error',
+      //   text1: 'Error',
+      //   text2: errMsg,
+      // });
 
       return { success: false, data: [] };
     } finally {

@@ -11,7 +11,7 @@ interface AttendancePayload {
   lng: number;
   date: string;
   time: string;
-  type: string
+  type: string;
 }
 
 interface LeavePayload {
@@ -57,7 +57,20 @@ interface LeaveRecord {
 interface EmpAttendanceResponse {
   status: string;
   employee_id: number;
+  month: string;
+  shift_start: string;
+  shift_end: string;
+  late_days: number;
   attendance: AttendanceRecord[];
+  summary: {
+    total_days_in_month: string;
+    total_present: number;
+    total_sundays: number;
+    total_holidays: number;
+    total_leave_accepted: number;
+    total_late: number;
+    total_absent: number;
+  };
 }
 
 interface LeaveListResponse {
@@ -77,11 +90,17 @@ export const useAttendance = () => {
     setError(null);
     setMessage(null);
 
-    console.log('🚀 Sending attendance request to:', APIEndpoints.attendance);
+    console.log(
+      '🚀 Sending attendance request to:',
+      APIEndpoints.giveAttendance,
+    );
     console.log('📦 Payload:', JSON.stringify(payload, null, 2));
 
     try {
-      const response = await baseClient.post(APIEndpoints.attendance, payload);
+      const response = await baseClient.post(
+        APIEndpoints.giveAttendance,
+        payload,
+      );
 
       console.log('✅ Full API Response:', JSON.stringify(response, null, 2));
       console.log('✅ Response data:', response.data);
@@ -93,22 +112,22 @@ export const useAttendance = () => {
 
       if (status === true) {
         console.log('🎉 Attendance marked successfully');
-        Toast.show({
-          type: 'success',
-          text1: 'Attendance Marked',
-          text2: responseMessage || 'Attendance recorded successfully.',
-        });
+        // Toast.show({
+        //   type: 'success',
+        //   text1: 'Attendance Marked',
+        //   text2: responseMessage || 'Attendance recorded successfully.',
+        // });
 
         return { success: true };
       } else {
         console.log('❌ API returned failure status');
         setError(responseMessage || 'Failed to mark attendance');
 
-        Toast.show({
-          type: 'error',
-          text1: 'Failed',
-          text2: responseMessage || 'Invalid employee ID or location.',
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Failed',
+        //   text2: responseMessage || 'Invalid employee ID or location.',
+        // });
 
         return { success: false };
       }
@@ -202,26 +221,27 @@ export const useAttendance = () => {
         payload,
       );
 
-      const { status, employee_id, attendance } =
-        response.data as EmpAttendanceResponse;
+      // console.log(
+      //   '✅ Attendance API Response:',
+      //   JSON.stringify(response.data, null, 2),
+      // );
+
+      const { status } = response.data;
 
       if (status === 'success') {
         return {
           success: true,
-          data: {
-            employee_id,
-            attendance,
-          },
+          data: response.data,
         };
       } else {
         const errorMessage = 'Failed to fetch attendance list';
         setError(errorMessage);
 
-        Toast.show({
-          type: 'error',
-          text1: 'Failed',
-          text2: errorMessage,
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Failed',
+        //   text2: errorMessage,
+        // });
 
         return { success: false, data: null };
       }
@@ -231,11 +251,11 @@ export const useAttendance = () => {
       setError(errMsg);
       setMessage(errMsg);
 
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errMsg,
-      });
+      // Toast.show({
+      //   type: 'error',
+      //   text1: 'Error',
+      //   text2: errMsg,
+      // });
 
       return { success: false, data: null };
     } finally {
@@ -270,11 +290,11 @@ export const useAttendance = () => {
         const errorMessage = 'Failed to fetch leave requests';
         setError(errorMessage);
 
-        Toast.show({
-          type: 'error',
-          text1: 'Failed',
-          text2: errorMessage,
-        });
+        // Toast.show({
+        //   type: 'error',
+        //   text1: 'Failed',
+        //   text2: errorMessage,
+        // });
 
         return { success: false, data: null };
       }
@@ -306,11 +326,27 @@ export const useAttendance = () => {
     }
   };
 
+  const empPayrollSum = async () => {
+    const payload = {
+      emp_id: userId,
+    };
+    setLoading(true);
+    try {
+      const response = await baseClient.post(APIEndpoints.payrollSum, payload);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     giveAttendance,
     requestLeave,
     empAttendanceList,
-    leaveList, // ✅ New function to get employee leave requests
+    leaveList,
+    empPayrollSum,
     loading,
     error,
     message,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -21,31 +21,93 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, updateUserContact } from '../redux/slices/authSlice'; // Assuming you have this action
+import { logout } from '../redux/slices/authSlice';
 import { authClient } from '../services/api.clients';
 import { APIEndpoints } from '../services/api.endpoints';
 
 const { height } = Dimensions.get('window');
 
+interface ProfileData {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string;
+  department: string;
+  salary: number;
+  join_date: string;
+}
+
 const Settings = ({ navigation }: any) => {
   const dispatch = useDispatch();
   const authState = useSelector((state: any) => state.auth);
 
+  // State for profile data from API
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  
   // Get user initials from name
-  const getUserInitials = (name: string) => {
-    if (!name) return 'JD';
-    const names = name.split(' ');
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  const getUserInitials = (firstName: string, lastName: string) => {
+    const first = firstName || '';
+    const last = lastName || '';
+    if (!first && !last) return 'JD';
+    const firstInitial = first.charAt(0).toUpperCase();
+    const lastInitial = last.charAt(0).toUpperCase();
+    return (firstInitial + lastInitial) || firstInitial || 'JD';
   };
 
+  // Fetch profile data from API
+  const fetchProfileData = async () => {
+    if (!authState.userId) {
+      Alert.alert('Error', 'User ID not found');
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    try {
+      setIsLoadingProfile(true);
+      const response = await authClient.get(APIEndpoints.getPofile, {
+        params: {
+          emp_id: authState.userId
+        }
+      });
+
+      if (response.data.status === 'success') {
+        setProfileData(response.data.profile);
+      } else {
+        Alert.alert('Error', 'Failed to load profile data');
+      }
+    } catch (error: any) {
+      console.error('Fetch profile error:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchProfileData();
+  }, [authState.userId]);
+
+  // Form state
   const [userData, setUserData] = useState({
-    name: authState.userName || '',
-    email: authState.email || '',
-    phone: authState.phone || '',
+    name: '',
+    email: '',
+    phone: '',
   });
+
+  // Update form data when profile is loaded
+  useEffect(() => {
+    if (profileData) {
+      const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+      setUserData({
+        name: fullName,
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+      });
+    }
+  }, [profileData]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -125,13 +187,17 @@ const Settings = ({ navigation }: any) => {
 
     let isValid = true;
 
-    // Validate email
+    // Validate email if provided
     if (userData.email && !validateEmail(userData.email)) {
       errors.email = 'Please enter a valid email address';
       isValid = false;
     }
 
-    
+    // Validate phone if provided
+    if (userData.phone && !validatePhone(userData.phone)) {
+      errors.phone = 'Please enter a valid phone number';
+      isValid = false;
+    }
 
     // Check if at least one field is being updated
     if (!userData.email && !userData.phone) {
@@ -160,20 +226,24 @@ const Settings = ({ navigation }: any) => {
         employee_id: authState.userId,
       };
 
+      let hasChanges = false;
+
       // Only include fields that have been changed
-      if (userData.email && userData.email !== authState.email) {
+      if (userData.email && userData.email !== (profileData?.email || '')) {
         payload.email = userData.email;
+        hasChanges = true;
       }
 
       if (userData.phone) {
         const cleanedPhone = userData.phone.replace(/\D/g, '');
-        if (cleanedPhone && cleanedPhone !== authState.phone) {
+        if (cleanedPhone && cleanedPhone !== (profileData?.phone || '')) {
           payload.phone = cleanedPhone;
+          hasChanges = true;
         }
       }
 
       // Check if there are any changes
-      if (!payload.email && !payload.phone) {
+      if (!hasChanges) {
         Alert.alert('No Changes', 'No changes detected to save');
         setIsSaving(false);
         return;
@@ -191,14 +261,8 @@ const Settings = ({ navigation }: any) => {
       if (response.data.status === true) {
         Alert.alert('Success', response.data.message || 'Profile updated successfully!');
         
-        // Update Redux state with new contact info if needed
-        if (response.data.data) {
-          // You might want to dispatch an action to update auth state
-          // dispatch(updateUserContact({
-          //   email: response.data.data.email || userData.email,
-          //   phone: response.data.data.phone_number || userData.phone,
-          // }));
-        }
+        // Refresh profile data after successful update
+        await fetchProfileData();
       } else {
         // Handle different error scenarios
         if (response.data.code === 409) {
@@ -326,6 +390,26 @@ const Settings = ({ navigation }: any) => {
     );
   };
 
+  // Show loading indicator while fetching profile
+  if (isLoadingProfile) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialIcons name="arrow-back" size={26} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Edit Profile</Text>
+          <View style={styles.saveButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#075E4D" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#fff" barStyle="dark-content" />
@@ -353,11 +437,11 @@ const Settings = ({ navigation }: any) => {
           <View style={styles.profileImageContainer}>
             <View style={styles.initialsContainer}>
               <Text style={styles.initialsText}>
-                {getUserInitials(userData.name)}
+                {getUserInitials(profileData?.first_name || '', profileData?.last_name || '')}
               </Text>
             </View>
             <Text style={styles.changePhotoText}>{userData.name}</Text>
-            <Text style={styles.roleText}>{authState.role || 'Employee'}</Text>
+            <Text style={styles.roleText}>{profileData?.department || 'Employee'}</Text>
           </View>
 
           {/* Form Section */}
@@ -393,7 +477,7 @@ const Settings = ({ navigation }: any) => {
                       setFieldErrors({ ...fieldErrors, email: '' });
                     }
                   }}
-                  placeholder={authState.email || "Enter your email"}
+                  placeholder={profileData?.email || "Enter your email"}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -422,7 +506,7 @@ const Settings = ({ navigation }: any) => {
                       setFieldErrors({ ...fieldErrors, phone: '' });
                     }
                   }}
-                  placeholder={authState.phone || "Enter your phone number"}
+                  placeholder={profileData?.phone || "Enter your phone number"}
                   keyboardType="phone-pad"
                   maxLength={10}
                 />
@@ -794,6 +878,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Add loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

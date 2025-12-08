@@ -9,14 +9,17 @@ export const APIEndpoints = {
 
   offers: '/offer.php',
 
-  attendance: '/employee_attendance.php',
+  giveAttendance: '/employee_attendance.php',
   leave: '/leave_req.php',
-  attendanceList: '/emp_attendance.php',
+  // attendanceList: '/emp_attendance.php', previously used
+  attendanceList: '/emp_monthly_attendance_list_sum.php',
+  payrollSum: '/emp_payroll_sum.php',
   leaveList: '/leave_request_list.php',
-  // pt: '/get_pt_subscriptions.php',
+  // pt: '/get_pt_subscriptions.php', previously used
   pt: '/employee_pt_list.php',
   createBmi: '/health.php',
   getBmi: '/get_member_bmi.php',
+  getPofile: '/emp_profile.php',
 
   // ADMIN Apis
   getAllEmployeeList: '/admin_get_all_active_employees.php',

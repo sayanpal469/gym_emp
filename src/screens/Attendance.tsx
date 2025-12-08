@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Animated,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -18,110 +19,113 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useAttendance } from '../hooks/useAttendance';
 import Toast from 'react-native-toast-message';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 interface AttendanceRecord {
-  id: number;
-  emp_id: number;
-  lat: number;
-  lng: number;
   date: string;
-  job_start_time: string;
-  job_end_time: string;
-  type: string;
-  created_at: string;
-  attendanceStatus: 'onTime' | 'Late';
+  job_start_time: string | null;
+  job_end_time: string | null;
+  is_sunday: boolean;
+  is_holiday: boolean;
+  is_leave: boolean;
+  status: 'On Time' | 'Late';
+}
+
+interface AttendanceResponse {
+  status: string;
+  employee_id: number;
+  month: string;
+  shift_start: string;
+  shift_end: string;
+  late_days: number;
+  attendance: AttendanceRecord[];
+  summary: {
+    total_days_in_month: string;
+    total_present: number;
+    total_sundays: number;
+    total_holidays: number;
+    total_leave_accepted: number;
+    total_late: number;
+    total_absent: number;
+  };
+}
+
+interface PayrollResponse {
+  status: string;
+  employee_id: number;
+  salary_details: {
+    actual_salary: number;
+    incentive: number;
+    late_days: number;
+    late_to_absent: number;
+    total_absent: number;
+    final_absent: number;
+    per_day_salary: number;
+    penalty: number;
+    net_salary: number;
+  };
+  attendance_summary: {
+    present: number;
+    leave: number;
+    holidays: number;
+    sundays: number;
+    late: number;
+    absent: number;
+    late_absent: number;
+  };
+}
+
+interface SummaryItem {
+  label: string;
+  value: string;
+  icon: string;
+  iconType: string;
+  color: string;
+  bgColor: string;
+}
+
+interface PayrollItem {
+  label: string;
+  value: string;
+  icon: string;
+  color: string;
+  isAmount?: boolean;
 }
 
 const Attendance = ({ navigation }: any) => {
-  const { empAttendanceList, loading } = useAttendance();
+  const { empAttendanceList, empPayrollSum, loading } = useAttendance();
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [userId] = useState(3);
-
-  // Calculate attendance summary from real data
-  const calculateSummary = () => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    const thisMonthAttendance = attendanceData.filter(record => {
-      const recordDate = new Date(record.date);
-      return recordDate.getMonth() === currentMonth &&
-        recordDate.getFullYear() === currentYear;
-    });
-
-    const attendanceDays = new Set(
-      thisMonthAttendance.map(record => record.date)
-    ).size;
-
-    const totalWorkingDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const offDays = Math.max(0, totalWorkingDays - attendanceDays);
-
-    // Calculate penalty based on Late status from API
-    const lateDays = thisMonthAttendance.filter(record =>
-      record.attendanceStatus === 'Late'
-    ).length;
-
-    const penalty = lateDays * 100;
-
-    return [
-      {
-        label: 'Attendance Days',
-        value: attendanceDays.toString(),
-        icon: 'calendar-check',
-        iconType: 'MaterialCommunityIcons',
-        color: '#4CAF50',
-        bgColor: '#E8F5E9'
-      },
-      {
-        label: 'Off Days',
-        value: offDays.toString(),
-        icon: 'calendar-remove',
-        iconType: 'MaterialCommunityIcons',
-        color: '#FF9800',
-        bgColor: '#FFF8E1'
-      },
-      {
-        label: 'Penalty',
-        value: `₹${penalty}`,
-        icon: 'cash-remove',
-        iconType: 'MaterialCommunityIcons',
-        color: '#F44336',
-        bgColor: '#FFEBEE'
-      },
-      {
-        label: 'Leave Days',
-        value: '0',
-        icon: 'beach',
-        iconType: 'MaterialCommunityIcons',
-        color: '#2196F3',
-        bgColor: '#E3F2FD'
-      },
-      {
-        label: 'Gross Salary',
-        value: '₹0',
-        icon: 'currency-inr',
-        iconType: 'MaterialCommunityIcons',
-        color: '#9C27B0',
-        bgColor: '#F3E5F5'
-      },
-    ];
-  };
+  const [responseData, setResponseData] = useState<AttendanceResponse | null>(null);
+  const [payrollData, setPayrollData] = useState<PayrollResponse | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerAnimation] = useState(new Animated.Value(0));
 
   const fetchAttendanceData = async () => {
     try {
       const result = await empAttendanceList();
 
-      if (result.success && result.data) {
-        const normalizedAttendance: AttendanceRecord[] =
-          (result.data.attendance ?? []).map((record: any) => ({
-            ...record,
-            attendanceStatus: record.attendanceStatus === 'Late' ? 'Late' : 'onTime',
-          }));
+      console.log("Attendance API Result:", result);
 
-        setAttendanceData(normalizedAttendance);
+      if (result.success && result.data) {
+        const response = result.data as AttendanceResponse;
+
+        if (response.attendance && Array.isArray(response.attendance)) {
+          setAttendanceData(response.attendance);
+          setResponseData(response);
+          console.log("Attendance data set successfully:", response.attendance.length, "records");
+        } else {
+          setAttendanceData([]);
+          setResponseData(null);
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Invalid attendance data format',
+          });
+        }
       } else {
         setAttendanceData([]);
+        setResponseData(null);
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -131,19 +135,75 @@ const Attendance = ({ navigation }: any) => {
     } catch (error) {
       console.error('Error fetching attendance:', error);
       setAttendanceData([]);
+      setResponseData(null);
     }
+  };
+
+  const fetchPayrollData = async () => {
+    try {
+      const result = await empPayrollSum();
+
+      console.log("Payroll API Result:", result);
+
+      if (result.success && result.data) {
+        const response = result.data as PayrollResponse;
+        setPayrollData(response);
+        console.log("Payroll data set successfully");
+      } else {
+        setPayrollData(null);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to fetch payroll data',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching payroll:', error);
+      setPayrollData(null);
+    }
+  };
+
+  const fetchAllData = async () => {
+    await Promise.all([fetchAttendanceData(), fetchPayrollData()]);
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchAttendanceData();
+    await fetchAllData();
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
   useEffect(() => {
-    fetchAttendanceData();
+    fetchAllData();
   }, []);
+
+  const toggleDrawer = () => {
+    if (drawerVisible) {
+      Animated.timing(drawerAnimation, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => setDrawerVisible(false));
+    } else {
+      setDrawerVisible(true);
+      Animated.timing(drawerAnimation, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const drawerTranslateY = drawerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [500, 0],
+  });
+
+  const drawerOpacity = drawerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -155,7 +215,20 @@ const Attendance = ({ navigation }: any) => {
     return date.toLocaleDateString('en-GB', options);
   };
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString: string | null) => {
+    if (!timeString || timeString === '00:00:00' || timeString === 'null') {
+      return '-- : --';
+    }
+
+    const [hours, minutes] = timeString.split(':');
+    const hour24 = parseInt(hours);
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  const formatShiftTime = (timeString: string) => {
     if (!timeString || timeString === '00:00:00') {
       return '-- : --';
     }
@@ -168,9 +241,47 @@ const Attendance = ({ navigation }: any) => {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  const getStatusConfig = (status: 'onTime' | 'Late') => {
-    switch (status) {
-      case 'onTime':
+  const getStatusConfig = (record: AttendanceRecord) => {
+    if (record.is_sunday) {
+      return {
+        backgroundColor: '#FFF8E1',
+        textColor: '#FF8F00',
+        icon: 'calendar-weekend',
+        text: 'Sunday'
+      };
+    }
+
+    if (record.is_holiday) {
+      return {
+        backgroundColor: '#FFF3E0',
+        textColor: '#EF6C00',
+        icon: 'party-popper',
+        text: 'Holiday'
+      };
+    }
+
+    if (record.is_leave) {
+      return {
+        backgroundColor: '#E3F2FD',
+        textColor: '#1976D2',
+        icon: 'beach',
+        text: 'Leave'
+      };
+    }
+
+    // For attendance days, check the status
+    if (!record.job_start_time && !record.job_end_time) {
+      return {
+        backgroundColor: '#F5F5F5',
+        textColor: '#616161',
+        icon: 'calendar-blank',
+        text: 'No Record'
+      };
+    }
+
+    // Handle attendance status
+    switch (record.status) {
+      case 'On Time':
         return {
           backgroundColor: '#E8F5E9',
           textColor: '#2E7D32',
@@ -186,31 +297,152 @@ const Attendance = ({ navigation }: any) => {
         };
       default:
         return {
-          backgroundColor: '#FFF8E1',
-          textColor: '#F57C00',
-          icon: 'help-circle',
-          text: 'Unknown'
+          backgroundColor: '#F5F5F5',
+          textColor: '#9E9E9E',
+          icon: 'calendar-blank',
+          text: 'No Record'
         };
     }
   };
 
-  const getUniqueAttendanceDays = () => {
-    const dateMap = new Map<string, AttendanceRecord>();
+  const getSummaryItems = (): SummaryItem[] => {
+    // Use payrollData.attendance_summary if available, otherwise use responseData.summary
+    if (payrollData?.attendance_summary) {
+      const summary = payrollData.attendance_summary;
+      // console.log("Using payroll attendance_summary:", summary);
 
-    attendanceData.forEach(record => {
-      const existing = dateMap.get(record.date);
-      if (!existing || record.created_at > existing.created_at) {
-        dateMap.set(record.date, record);
-      }
-    });
+      return [
+        {
+          label: 'Attendance Days',
+          value: summary.present.toString(),
+          icon: 'calendar-check',
+          iconType: 'MaterialCommunityIcons',
+          color: '#4CAF50',
+          bgColor: '#E8F5E9'
+        },
+        {
+          label: 'Absent',
+          value: summary.absent.toString(),
+          icon: 'calendar-remove',
+          iconType: 'MaterialCommunityIcons',
+          color: '#F44336',
+          bgColor: '#FFEBEE'
+        },
+        {
+          label: 'Leave Days',
+          value: summary.leave.toString(),
+          icon: 'beach',
+          iconType: 'MaterialCommunityIcons',
+          color: '#2196F3',
+          bgColor: '#E3F2FD'
+        },
+        {
+          label: 'Late Absent',
+          value: summary?.late_absent.toString(),
+          icon: 'calendar-clock',
+          iconType: 'MaterialCommunityIcons',
+          color: '#FF9800',
+          bgColor: '#FFF3E0'
+        },
+        {
+          label: 'Late',
+          value: summary?.late?.toString(),
+          icon: 'clock-alert',
+          iconType: 'MaterialCommunityIcons',
+          color: '#FF5722',
+          bgColor: '#FFEBEE'
+        },
+      ];
+    } else if (responseData?.summary) {
+      // console.log("Using attendance API summary:", responseData.summary);
 
-    return Array.from(dateMap.values()).sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+      return [
+        {
+          label: 'Attendance Days',
+          value: responseData?.summary.total_present.toString(),
+          icon: 'calendar-check',
+          iconType: 'MaterialCommunityIcons',
+          color: '#4CAF50',
+          bgColor: '#E8F5E9'
+        },
+        {
+          label: 'Absent',
+          value: responseData?.summary.total_absent.toString(),
+          icon: 'calendar-remove',
+          iconType: 'MaterialCommunityIcons',
+          color: '#F44336',
+          bgColor: '#FFEBEE'
+        },
+        {
+          label: 'Leave Days',
+          value: responseData.summary?.total_leave_accepted.toString(),
+          icon: 'beach',
+          iconType: 'MaterialCommunityIcons',
+          color: '#2196F3',
+          bgColor: '#E3F2FD'
+        },
+        {
+          label: 'Late',
+          value: responseData.summary?.total_late.toString(),
+          icon: 'clock-alert',
+          iconType: 'MaterialCommunityIcons',
+          color: '#FF9800',
+          bgColor: '#FFF8E1'
+        }
+      ];
+    }
+
+    return [];
   };
 
-  const attendanceSummary = calculateSummary();
-  const uniqueAttendanceDays = getUniqueAttendanceDays();
+  const getPayrollItems = (): PayrollItem[] => {
+    if (!payrollData?.salary_details) return [];
+
+    const salary = payrollData.salary_details;
+    console.log("Using payroll salary_details:", salary);
+
+    return [
+      {
+        label: 'Actual Salary',
+        value: formatDecimal(salary.actual_salary),
+        icon: 'currency-inr',
+        color: '#4CAF50',
+        isAmount: true
+      },
+      {
+        label: 'Incentive',
+        value: formatDecimal(salary.incentive),
+        icon: 'trending-up',
+        color: '#2196F3',
+        isAmount: true
+      },
+      {
+        label: 'Penalty',
+        value: formatDecimal(salary.penalty),
+        icon: 'cash-remove',
+        color: '#F44336',
+        isAmount: true
+      },
+      {
+        label: 'Net Salary',
+        value: formatDecimal(salary.net_salary),
+        icon: 'calculator',
+        color: '#9C27B0',
+        isAmount: true
+      },
+    ];
+  };
+
+  const formatDecimal = (value: number): string => {
+    // Round to 2 decimal places
+    const rounded = Math.round(value * 100) / 100;
+    
+    // Format with Indian number system (comma separators)
+    return rounded.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 
   const renderIcon = (iconType: string, iconName: string, color: string, size: number = 26) => {
     switch (iconType) {
@@ -228,51 +460,137 @@ const Attendance = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-      
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <MaterialIcons name="arrow-back-ios" size={24} color="#000" />
+          <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>ATTENDANCE LIST</Text>
-        <TouchableOpacity
-          onPress={onRefresh}
-          style={styles.refreshButton}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#075E4D" />
-          ) : (
-            <MaterialIcons
-              name="refresh"
-              size={24}
-              color={"#075E4D"}
-            />
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={toggleDrawer}
+            style={styles.payrollButton}
+          >
+            <MaterialCommunityIcons name="cash-multiple" size={20} color="#fff" />
+            <Text style={styles.payrollButtonText}>Payroll</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onRefresh}
+            style={styles.refreshButton}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <MaterialIcons
+                name="refresh"
+                size={24}
+                color="#fff"
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Payroll Drawer (Bottom Sheet) */}
+      {drawerVisible && (
+        <View style={styles.drawerOverlay}>
+          <TouchableOpacity
+            style={styles.drawerBackdrop}
+            activeOpacity={1}
+            onPress={toggleDrawer}
+          />
+          <Animated.View
+            style={[
+              styles.drawerContainer,
+              {
+                opacity: drawerOpacity,
+                transform: [{ translateY: drawerTranslateY }]
+              }
+            ]}
+          >
+            <View style={styles.drawerHandle} />
+            <View style={styles.drawerContent}>
+              <View style={styles.drawerHeader}>
+                <MaterialCommunityIcons name="cash-multiple" size={24} color="#fff" />
+                <Text style={styles.drawerTitle}>Payroll Details</Text>
+                <TouchableOpacity onPress={toggleDrawer} style={styles.drawerCloseButton}>
+                  <MaterialIcons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView 
+                style={styles.drawerBody}
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                contentContainerStyle={styles.drawerScrollContent}
+              >
+                {getPayrollItems().map((item, index) => (
+                  <View key={index} style={styles.payrollItem}>
+                    <View style={[styles.payrollIconContainer, { backgroundColor: item.color }]}>
+                      <MaterialCommunityIcons name={item.icon} size={20} color="#fff" />
+                    </View>
+                    <View style={styles.payrollInfo}>
+                      <Text style={styles.payrollLabel}>{item.label}</Text>
+                      <Text style={[
+                        styles.payrollValue,
+                        item.isAmount && styles.payrollAmount
+                      ]}>
+                        {item.isAmount ? '₹' : ''}{item.value}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+                
+              </ScrollView>
+            </View>
+          </Animated.View>
+        </View>
+      )}
 
       {/* Main Content Container */}
       <View style={styles.mainContainer}>
+        {/* Month and Shift Info */}
+        <View style={styles.infoSection}>
+          {responseData && (
+            <>
+              <View style={styles.monthContainer}>
+                <MaterialCommunityIcons name="calendar-month" size={24} color="#075E4D" />
+                <Text style={styles.monthText}>{responseData.month}</Text>
+              </View>
+              <View style={styles.shiftContainer}>
+                <View style={styles.shiftItem}>
+                  <MaterialCommunityIcons name="clock-start" size={18} color="#4CAF50" />
+                  <Text style={styles.shiftText}>Shift: {formatShiftTime(responseData.shift_start)}</Text>
+                </View>
+                <View style={styles.shiftItem}>
+                  <MaterialCommunityIcons name="clock-end" size={18} color="#F44336" />
+                  <Text style={styles.shiftText}>To: {formatShiftTime(responseData.shift_end)}</Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
         {/* Summary Cards */}
         <View style={styles.summarySection}>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.summaryContent}
           >
-            {attendanceSummary.map((item, index) => (
-              <View 
-                key={index} 
+            {getSummaryItems().map((item, index) => (
+              <View
+                key={index}
                 style={[
-                  styles.summaryCard, 
-                  { 
+                  styles.summaryCard,
+                  {
                     backgroundColor: item.bgColor,
-                    marginRight: index === attendanceSummary.length - 1 ? 0 : 12
+                    marginRight: index === getSummaryItems().length - 1 ? 0 : 12
                   }
                 ]}
               >
@@ -288,14 +606,19 @@ const Attendance = ({ navigation }: any) => {
 
         {/* Attendance List Section */}
         <View style={styles.listSection}>
-          <Text style={styles.listTitle}>ATTENDANCE LIST THIS MONTH</Text>
+          <View style={styles.listHeader}>
+            <Text style={styles.listTitle}>DAILY ATTENDANCE</Text>
+            <Text style={styles.listSubtitle}>
+              Total Days: {responseData?.summary?.total_days_in_month || '0'}
+            </Text>
+          </View>
 
           {loading && attendanceData.length === 0 ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#075E4D" />
               <Text style={styles.loadingText}>Loading attendance data...</Text>
             </View>
-          ) : uniqueAttendanceDays.length === 0 ? (
+          ) : attendanceData.length === 0 ? (
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
               <Text style={styles.emptyText}>No attendance records found</Text>
@@ -317,30 +640,29 @@ const Attendance = ({ navigation }: any) => {
                 />
               }
             >
-              {uniqueAttendanceDays.map(record => {
-                const statusConfig = getStatusConfig(
-                  record.attendanceStatus === 'Late' ? 'Late' : 'onTime'
-                );
+              {attendanceData.map((record, index) => {
+                const statusConfig = getStatusConfig(record);
 
                 return (
-                  <View key={record.id} style={styles.listItem}>
-                    <View style={styles.listIconBox}>
-                      <FontAwesome name="clipboard-list" size={22} color="#075E4D" />
+                  <View key={index} style={styles.listItem}>
+                    <View style={styles.dateContainer}>
+                      <Text style={styles.dayText}>
+                        {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                      </Text>
+                      <Text style={styles.dateNumber}>
+                        {new Date(record.date).getDate()}
+                      </Text>
                     </View>
-                    
+
                     <View style={styles.listContentContainer}>
                       <View style={styles.dateRow}>
-                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                        <MaterialCommunityIcons name="calendar" size={16} color="#6B7280" />
                         <Text style={styles.dateText}>{formatDate(record.date)}</Text>
                       </View>
                       <View style={styles.timeRow}>
                         <View style={styles.timeItem}>
-                          <Ionicons name="time-outline" size={14} color="#6B7280" />
+                          <MaterialCommunityIcons name="login" size={14} color="#6B7280" />
                           <Text style={styles.inOutText}>In: {formatTime(record.job_start_time)}</Text>
-                        </View>
-                        <View style={styles.timeItem}>
-                          <Ionicons name="time-outline" size={14} color="#6B7280" />
-                          <Text style={styles.inOutText}>Out: {formatTime(record.job_end_time)}</Text>
                         </View>
                       </View>
                     </View>
@@ -351,7 +673,7 @@ const Attendance = ({ navigation }: any) => {
                         styles.statusBadge,
                         { backgroundColor: statusConfig.backgroundColor }
                       ]}>
-                        <Ionicons
+                        <MaterialCommunityIcons
                           name={statusConfig.icon}
                           size={12}
                           color={statusConfig.textColor}
@@ -382,17 +704,20 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    marginTop: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    // backgroundColor: '#fff',
-    // borderBottomWidth: 1,
-    // borderBottomColor: '#E5E7EB',
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginTop: StatusBar.currentHeight || 0,
   },
   backButton: {
     padding: 4,
@@ -400,33 +725,265 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#fff',
     textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  payrollButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  payrollButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   refreshButton: {
     padding: 4,
     width: 40,
     alignItems: 'center',
   },
+  drawerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  drawerContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+    maxHeight: 600,
+    minHeight: 400,
+  },
+  drawerHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 2,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  drawerContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#075E4D',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    paddingTop: 12,
+  },
+  drawerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginLeft: 12,
+  },
+  drawerCloseButton: {
+    padding: 4,
+  },
+  drawerBody: {
+    flex: 1,
+  },
+  drawerScrollContent: {
+    padding: 20,
+    paddingBottom: 30,
+  },
+  payrollItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  payrollIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  payrollInfo: {
+    flex: 1,
+  },
+  payrollLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  payrollValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  payrollAmount: {
+    color: '#075E4D',
+    fontSize: 22,
+  },
+  additionalInfo: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  drawerFooter: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  footerNote: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   mainContainer: {
     flex: 1,
+  },
+  infoSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  monthContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  monthText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 10,
+  },
+  shiftContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  shiftItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  shiftText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginLeft: 6,
   },
   summarySection: {
     backgroundColor: '#fff',
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   summaryContent: {
     paddingHorizontal: 16,
   },
   summaryCard: {
-    width: screenWidth * 0.35,
-    minWidth: 140,
-    maxWidth: 160,
-    height: 120,
+    width: screenWidth * 0.32,
+    minWidth: 120,
+    maxWidth: 140,
+    height: 110,
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -439,9 +996,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -450,7 +1007,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#1F2937',
-    marginBottom: 4,
+    marginBottom: 2,
     textAlign: 'center',
   },
   cardLabel: {
@@ -463,12 +1020,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 16,
   },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
   listTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+  },
+  listSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   listScrollView: {
     flex: 1,
@@ -480,21 +1047,32 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
     elevation: 2,
   },
-  listIconBox: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    padding: 10,
-    marginRight: 12,
+  dateContainer: {
+    alignItems: 'center',
+    marginRight: 16,
+    minWidth: 40,
+  },
+  dayText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  dateNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#075E4D',
   },
   listContentContainer: {
     flex: 1,
@@ -533,17 +1111,18 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
     justifyContent: 'center',
+    minWidth: 70,
   },
   statusIcon: {
     marginRight: 4,
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
   loadingContainer: {
