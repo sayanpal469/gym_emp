@@ -6,7 +6,10 @@ import {
   SafeAreaView,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar,
+  Platform,
+  RefreshControl,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -113,80 +116,131 @@ const BMIScreen = ({ route, navigation }: any) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.title}>BMI REPORT</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#075E4D" />
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+        <View style={styles.mainContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.title}>BMI REPORT</Text>
+            <View style={styles.headerRight}>
+              {/* Empty view for symmetry */}
+              <View style={styles.placeholderButton} />
+            </View>
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#075E4D" />
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>BMI REPORT</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
 
-      {/* BMI List */}
-      <FlatList
-        data={bmiData}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderBMICard}
-        contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: 16 }}
-        showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No BMI records found</Text>
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Attendance.tsx */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>BMI REPORT</Text>
+          <View style={styles.headerRight}>
+            {/* Empty view for symmetry */}
+            <View style={styles.placeholderButton} />
           </View>
-        }
-      />
+        </View>
 
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() =>
-          navigation.navigate('AddBMI', {
-            memberId,
-            memberName,
-          })
-        }
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+        {/* BMI List */}
+        <FlatList
+          data={bmiData}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderBMICard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#075E4D']}
+              tintColor="#075E4D"
+              progressBackgroundColor="#fff"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No BMI records found</Text>
+            </View>
+          }
+        />
+
+        {/* Floating Add Button */}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() =>
+            navigation.navigate('AddBMI', {
+              memberId,
+              memberName,
+            })
+          }
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#075E4D',
+  },
+  mainContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 35,
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 20,
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginLeft: 10,
-    color: '#222',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  placeholderButton: {
+    width: 40,
+    height: 40,
+  },
+  listContent: {
+    paddingBottom: 80,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   card: {
     flexDirection: 'row',
@@ -288,6 +342,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    marginTop: 40,
   },
   emptyText: {
     fontSize: 16,

@@ -6,8 +6,10 @@ import {
   SafeAreaView,
   TouchableOpacity,
   TextInput,
-  Keyboard,
   ScrollView,
+  StatusBar,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useSelector } from 'react-redux';
@@ -25,7 +27,7 @@ const AddBMIScreen = ({ route, navigation }: any) => {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [loading, setLoading] = useState(false);
-  
+
   // State for API response data
   const [bmiData, setBmiData] = useState<{
     value: number;
@@ -64,10 +66,10 @@ const AddBMIScreen = ({ route, navigation }: any) => {
       };
 
       const response = await baseClient.post(APIEndpoints.createBmi, payload);
-      
+
       if (response.data.ok) {
         const { bmi, bmr, body_fat_percent, ideal_body_weight } = response.data;
-        
+
         // Set all the response data
         setBmiData(bmi);
         setBmr(bmr);
@@ -79,7 +81,7 @@ const AddBMIScreen = ({ route, navigation }: any) => {
           text1: 'Health Data Saved Successfully',
           text2: `BMI: ${bmi.value} (${bmi.category})`,
         });
-        
+
         // Don't navigate back automatically - let user see the results
       } else {
         Toast.show({
@@ -101,174 +103,228 @@ const AddBMIScreen = ({ route, navigation }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>ADD HEALTH DATA</Text>
-        <TouchableOpacity 
-          disabled={loading} 
-          onPress={saveBMI}
-        >
-          <Text style={[styles.saveText, { color: !loading ? '#075E4D' : '#aaa' }]}>
-            {loading ? 'Saving...' : 'Save'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Member Info */}
-        <View style={styles.memberCard}>
-          <Text style={styles.memberName}>{memberName}</Text>
-
-          {/* Gender Toggle */}
-          <View style={styles.genderToggle}>
-            {['Male', 'Female'].map((g) => (
-              <TouchableOpacity
-                key={g}
-                style={[
-                  styles.genderButton,
-                  gender === g && styles.genderButtonActive,
-                ]}
-                onPress={() => setGender(g as 'Male' | 'Female')}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    gender === g && styles.genderTextActive,
-                  ]}
-                >
-                  {g}
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Attendance.tsx */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>ADD HEALTH DATA</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={saveBMI}
+              disabled={loading || !height || !weight || !age}
+              style={styles.saveButton}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={[
+                  styles.saveText,
+                  (!height || !weight || !age) && styles.saveTextDisabled
+                ]}>
+                  Save
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Row Inputs */}
-          <View style={styles.rowInputs}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Age</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={age}
-                onChangeText={setAge}
-                placeholder="Age"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Height (cm)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={height}
-                onChangeText={setHeight}
-                placeholder="Height"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Weight (kg)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={weight}
-                onChangeText={setWeight}
-                placeholder="Weight"
-                placeholderTextColor="#999"
-              />
-            </View>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Save Button */}
-        <TouchableOpacity 
-          style={[
-            styles.calcButton, 
-            (!height || !weight || !age || loading) && styles.disabledButton
-          ]} 
-          onPress={saveBMI}
-          disabled={!height || !weight || !age || loading}
-        >
-          <Text style={styles.calcButtonText}>
-            {loading ? 'Calculating...' : 'Calculate & Save Health Data'}
-          </Text>
-        </TouchableOpacity>
 
-        {/* Health Result Card */}
-        {bmiData && (
-          <View style={styles.resultContainer}>
-            <View
-              style={[
-                styles.resultCard,
-                { borderColor: categoryColors[bmiData.category] || '#777' },
-              ]}
-            >
-              <Text style={styles.sectionTitle}>BMI Result</Text>
-              <Text style={styles.bmiValue}>{bmiData.value.toFixed(1)}</Text>
-              <View
-                style={[
-                  styles.categoryBadge,
-                  { backgroundColor: categoryColors[bmiData.category] || '#777' },
-                ]}
-              >
-                <Text style={styles.categoryText}>{bmiData.category}</Text>
-              </View>
+        <ScrollView
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Member Info */}
+          <View style={styles.memberCard}>
+            <Text style={styles.memberName}>{memberName}</Text>
+
+            {/* Gender Toggle */}
+            <View style={styles.genderToggle}>
+              {['Male', 'Female'].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  style={[
+                    styles.genderButton,
+                    gender === g && styles.genderButtonActive,
+                  ]}
+                  onPress={() => setGender(g as 'Male' | 'Female')}
+                >
+                  <Text
+                    style={[
+                      styles.genderText,
+                      gender === g && styles.genderTextActive,
+                    ]}
+                  >
+                    {g}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            {/* Additional Health Metrics */}
-            <View style={styles.metricsContainer}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>BMR</Text>
-                <Text style={styles.metricValue}>{bmr}</Text>
-                <Text style={styles.metricUnit}>calories/day</Text>
+            {/* Row Inputs */}
+            <View style={styles.rowInputs}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Age</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={age}
+                  onChangeText={setAge}
+                  placeholder="Age"
+                  placeholderTextColor="#999"
+                />
               </View>
-              
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Body Fat</Text>
-                <Text style={styles.metricValue}>{bodyFatPercent?.toFixed(1)}%</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Height (cm)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={height}
+                  onChangeText={setHeight}
+                  placeholder="Height"
+                  placeholderTextColor="#999"
+                />
               </View>
-              
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Ideal Weight</Text>
-                <Text style={styles.metricValue}>{idealBodyWeight?.toFixed(1)}</Text>
-                <Text style={styles.metricUnit}>kg</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Weight (kg)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="Weight"
+                  placeholderTextColor="#999"
+                />
               </View>
             </View>
           </View>
-        )}
-      </ScrollView>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.calcButton,
+              (!height || !weight || !age || loading) && styles.disabledButton
+            ]}
+            onPress={saveBMI}
+            disabled={!height || !weight || !age || loading}
+          >
+            <Text style={styles.calcButtonText}>
+              {loading ? 'Calculating...' : 'Calculate & Save Health Data'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Health Result Card */}
+          {bmiData && (
+            <View style={styles.resultContainer}>
+              <View
+                style={[
+                  styles.resultCard,
+                  { borderColor: categoryColors[bmiData.category] || '#777' },
+                ]}
+              >
+                <Text style={styles.sectionTitle}>BMI Result</Text>
+                <Text style={styles.bmiValue}>{bmiData.value.toFixed(1)}</Text>
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: categoryColors[bmiData.category] || '#777' },
+                  ]}
+                >
+                  <Text style={styles.categoryText}>{bmiData.category}</Text>
+                </View>
+              </View>
+
+              {/* Additional Health Metrics */}
+              <View style={styles.metricsContainer}>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>BMR</Text>
+                  <Text style={styles.metricValue}>{bmr}</Text>
+                  <Text style={styles.metricUnit}>calories/day</Text>
+                </View>
+
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Body Fat</Text>
+                  <Text style={styles.metricValue}>{bodyFatPercent?.toFixed(1)}%</Text>
+                </View>
+
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Ideal Weight</Text>
+                  <Text style={styles.metricValue}>{idealBodyWeight?.toFixed(1)}</Text>
+                  <Text style={styles.metricUnit}>kg</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Bottom padding */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#075E4D',
+  },
+  mainContainer: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 35,
-    paddingHorizontal: 16,
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#222',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  saveButton: {
+    padding: 4,
+    width: 50,
+    alignItems: 'center',
   },
   saveText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#075E4D'
+    color: '#fff'
+  },
+  saveTextDisabled: {
+    color: '#aaa',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   memberCard: {
     backgroundColor: '#ffffff',
@@ -420,6 +476,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     marginTop: 2,
+  },
+  bottomPadding: {
+    height: 20,
   },
 });
 

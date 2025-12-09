@@ -10,6 +10,7 @@ import {
     StatusBar,
     RefreshControl,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -165,15 +166,11 @@ const NewTrialAssign = ({ navigation }: any) => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="light-content" backgroundColor={PRIMARY_COLOR} />
-
-            {/* Header with Gradient */}
-            <LinearGradient
-                colors={[PRIMARY_COLOR, SECONDARY_COLOR]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.headerGradient}
-            >
+            <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+            
+            {/* Main Container */}
+            <View style={styles.mainContainer}>
+                {/* Header - Matching Attendance.tsx */}
                 <View style={styles.header}>
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
@@ -181,193 +178,194 @@ const NewTrialAssign = ({ navigation }: any) => {
                     >
                         <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.title}>New Trial</Text>
-                        <Text style={styles.subtitle}>Track and manage trial sessions</Text>
+                    <Text style={styles.title}>NEW TRIAL ASSIGN</Text>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity
+                            onPress={onReload}
+                            style={styles.refreshButton}
+                            disabled={reloading}
+                        >
+                            {reloading ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <MaterialIcons
+                                    name="refresh"
+                                    size={24}
+                                    color="#fff"
+                                />
+                            )}
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress={onReload}
-                        style={[styles.reloadButton, reloading && styles.disabledButton]}
-                        disabled={reloading}
-                    >
-                        <MaterialIcons
-                            name="refresh"
-                            size={24}
-                            color={reloading ? "#ccc" : "#fff"}
-                            style={reloading ? styles.rotatingIcon : null}
+                </View>
+
+                <ScrollView
+                    style={styles.scrollContainer}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[PRIMARY_COLOR]}
+                            tintColor={PRIMARY_COLOR}
+                            progressBackgroundColor="#fff"
                         />
-                    </TouchableOpacity>
-                </View>
-            </LinearGradient>
+                    }
+                >
+                    {/* Summary Cards */}
+                    <View style={styles.summaryContainer}>
+                        <LinearGradient
+                            colors={['#e8f5f2', '#d4f0e9']}
+                            style={styles.summaryCard}
+                        >
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="briefcase" size={24} color={PRIMARY_COLOR} />
+                            </View>
+                            <Text style={styles.summaryValue}>{trialData.length}</Text>
+                            <Text style={styles.summaryLabel}>Total Trials</Text>
+                        </LinearGradient>
 
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[PRIMARY_COLOR]}
-                        tintColor={PRIMARY_COLOR}
-                        progressBackgroundColor="#fff"
-                    />
-                }
-            >
-                {/* Summary Cards */}
-                <View style={styles.summaryContainer}>
-                    <LinearGradient
-                        colors={['#e8f5f2', '#d4f0e9']}
-                        style={styles.summaryCard}
-                    >
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="briefcase" size={24} color={PRIMARY_COLOR} />
-                        </View>
-                        <Text style={styles.summaryValue}>{trialData.length}</Text>
-                        <Text style={styles.summaryLabel}>Total Trials</Text>
-                    </LinearGradient>
+                        <LinearGradient
+                            colors={['#e8f5f2', '#d4f0e9']}
+                            style={styles.summaryCard}
+                        >
+                            <View style={styles.iconCircle}>
+                                <FontAwesome5 name="user-check" size={20} color={PRIMARY_COLOR} />
+                            </View>
+                            <Text style={styles.summaryValue}>
+                                {getAssignedCount()}
+                            </Text>
+                            <Text style={styles.summaryLabel}>Assigned</Text>
+                        </LinearGradient>
 
-                    <LinearGradient
-                        colors={['#e8f5f2', '#d4f0e9']}
-                        style={styles.summaryCard}
-                    >
-                        <View style={styles.iconCircle}>
-                            <FontAwesome5 name="user-check" size={20} color={PRIMARY_COLOR} />
-                        </View>
-                        <Text style={styles.summaryValue}>
-                            {getAssignedCount()}
-                        </Text>
-                        <Text style={styles.summaryLabel}>Assigned</Text>
-                    </LinearGradient>
-
-                    <LinearGradient
-                        colors={['#e8f5f2', '#d4f0e9']}
-                        style={styles.summaryCard}
-                    >
-                        <View style={styles.iconCircle}>
-                            <Ionicons name="checkmark-done-circle" size={24} color={PRIMARY_COLOR} />
-                        </View>
-                        <Text style={styles.summaryValue}>
-                            {getCompletedCount()}
-                        </Text>
-                        <Text style={styles.summaryLabel}>Completed</Text>
-                    </LinearGradient>
-                </View>
-
-                {/* Recent Assignments Section */}
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Recent Assignments</Text>
-                    <View style={styles.sectionDivider} />
-                </View>
-
-                {loading && !refreshing ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-                        <Text style={styles.loadingText}>Loading trial assignments...</Text>
+                        <LinearGradient
+                            colors={['#e8f5f2', '#d4f0e9']}
+                            style={styles.summaryCard}
+                        >
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="checkmark-done-circle" size={24} color={PRIMARY_COLOR} />
+                            </View>
+                            <Text style={styles.summaryValue}>
+                                {getCompletedCount()}
+                            </Text>
+                            <Text style={styles.summaryLabel}>Completed</Text>
+                        </LinearGradient>
                     </View>
-                ) : (
-                    <>
-                        {/* Trial Assignments List */}
-                        {trialData.length > 0 ? (
-                            trialData.map((trial) => {
-                                const statusInfo = getStatusInfo(trial.status, trial.status_name);
 
-                                return (
-                                    <View key={trial.id} style={styles.card}>
-                                        {/* Card Header */}
-                                        <View style={styles.cardHeader}>
-                                            <View style={styles.avatarContainer}>
-                                                <LinearGradient
-                                                    colors={[PRIMARY_COLOR, SECONDARY_COLOR]}
-                                                    style={styles.avatarGradient}
-                                                >
-                                                    <Text style={styles.avatarText}>
-                                                        {getInitials(trial.member_name)}
+                    {/* Recent Assignments Section */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Recent Assignments</Text>
+                        <View style={styles.sectionDivider} />
+                    </View>
+
+                    {loading && !refreshing ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+                            <Text style={styles.loadingText}>Loading trial assignments...</Text>
+                        </View>
+                    ) : (
+                        <>
+                            {/* Trial Assignments List */}
+                            {trialData.length > 0 ? (
+                                trialData.map((trial) => {
+                                    const statusInfo = getStatusInfo(trial.status, trial.status_name);
+
+                                    return (
+                                        <View key={trial.id} style={styles.card}>
+                                            {/* Card Header */}
+                                            <View style={styles.cardHeader}>
+                                                <View style={styles.avatarContainer}>
+                                                    <LinearGradient
+                                                        colors={[PRIMARY_COLOR, SECONDARY_COLOR]}
+                                                        style={styles.avatarGradient}
+                                                    >
+                                                        <Text style={styles.avatarText}>
+                                                            {getInitials(trial.member_name)}
+                                                        </Text>
+                                                    </LinearGradient>
+                                                </View>
+                                                <View style={styles.nameContainer}>
+                                                    <Text style={styles.memberName} numberOfLines={1}>
+                                                        {trial.member_name}
                                                     </Text>
-                                                </LinearGradient>
-                                            </View>
-                                            <View style={styles.nameContainer}>
-                                                <Text style={styles.memberName} numberOfLines={1}>
-                                                    {trial.member_name}
-                                                </Text>
 
-                                                <View style={styles.detailsRow}>
-
-
-                                                    <View style={styles.detailItem}>
-                                                        <MaterialIcons name="person" size={14} color="#666" />
-                                                        <Text style={styles.detailText}>{trial.trainer_name}</Text>
+                                                    <View style={styles.detailsRow}>
+                                                        <View style={styles.detailItem}>
+                                                            <MaterialIcons name="person" size={14} color="#666" />
+                                                            <Text style={styles.detailText}>{trial.trainer_name}</Text>
+                                                        </View>
                                                     </View>
                                                 </View>
                                             </View>
 
-                                        </View>
-
-                                        {/* Trial Date and Time */}
-                                        <View style={styles.dateTimeContainer}>
-                                            <View style={styles.dateTimeItem}>
-                                                <MaterialIcons name="calendar-today" size={16} color="#666" />
-                                                <Text style={styles.dateTimeLabel}>Date:</Text>
-                                                <Text style={styles.dateTimeValue}>{formatDate(trial.trial_date)}</Text>
-                                            </View>
-
-                                            {trial.trial_time && (
+                                            {/* Trial Date and Time */}
+                                            <View style={styles.dateTimeContainer}>
                                                 <View style={styles.dateTimeItem}>
-                                                    <MaterialIcons name="access-time" size={16} color="#666" />
-                                                    <Text style={styles.dateTimeLabel}>Time:</Text>
-                                                    <Text style={styles.dateTimeValue}>{formatTime(trial.trial_time)}</Text>
+                                                    <MaterialIcons name="calendar-today" size={16} color="#666" />
+                                                    <Text style={styles.dateTimeLabel}>Date:</Text>
+                                                    <Text style={styles.dateTimeValue}>{formatDate(trial.trial_date)}</Text>
                                                 </View>
-                                            )}
-                                        </View>
 
-                                        {/* Status Bar at Bottom */}
-                                        <View style={[styles.statusBar, { backgroundColor: statusInfo.bg }]}>
-                                            <View style={styles.statusContent}>
-                                                <Ionicons
-                                                    name={statusInfo.icon as any}
-                                                    size={16}
-                                                    color={statusInfo.text}
-                                                    style={styles.statusIcon}
-                                                />
-                                                <Text style={[styles.statusText, { color: statusInfo.text }]}>
-                                                    {statusInfo.label}
-                                                </Text>
+                                                {trial.trial_time && (
+                                                    <View style={styles.dateTimeItem}>
+                                                        <MaterialIcons name="access-time" size={16} color="#666" />
+                                                        <Text style={styles.dateTimeLabel}>Time:</Text>
+                                                        <Text style={styles.dateTimeValue}>{formatTime(trial.trial_time)}</Text>
+                                                    </View>
+                                                )}
                                             </View>
 
-                                            {/* Note indicator if note exists */}
-                                            {trial.note && (
-                                                <View style={styles.noteIndicator}>
-                                                    <MaterialIcons name="sticky-note-2" size={16} color="#666" />
-                                                    <Text style={styles.noteText}>Has note</Text>
+                                            {/* Status Bar at Bottom */}
+                                            <View style={[styles.statusBar, { backgroundColor: statusInfo.bg }]}>
+                                                <View style={styles.statusContent}>
+                                                    <Ionicons
+                                                        name={statusInfo.icon as any}
+                                                        size={16}
+                                                        color={statusInfo.text}
+                                                        style={styles.statusIcon}
+                                                    />
+                                                    <Text style={[styles.statusText, { color: statusInfo.text }]}>
+                                                        {statusInfo.label}
+                                                    </Text>
                                                 </View>
-                                            )}
+
+                                                {/* Note indicator if note exists */}
+                                                {trial.note && (
+                                                    <View style={styles.noteIndicator}>
+                                                        <MaterialIcons name="sticky-note-2" size={16} color="#666" />
+                                                        <Text style={styles.noteText}>Has note</Text>
+                                                    </View>
+                                                )}
+                                            </View>
                                         </View>
+                                    );
+                                })
+                            ) : (
+                                /* Empty State */
+                                <View style={styles.emptyState}>
+                                    <View style={styles.emptyIconContainer}>
+                                        <Ionicons name="clipboard-outline" size={64} color="#E0E0E0" />
                                     </View>
-                                );
-                            })
-                        ) : (
-                            /* Empty State */
-                            <View style={styles.emptyState}>
-                                <View style={styles.emptyIconContainer}>
-                                    <Ionicons name="clipboard-outline" size={64} color="#E0E0E0" />
+                                    <Text style={styles.emptyTitle}>No trial assignments</Text>
+                                    <Text style={styles.emptySubtitle}>
+                                        You don't have any trial assignments at the moment
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={onRefresh}
+                                        style={styles.retryButton}
+                                        activeOpacity={0.8}
+                                    >
+                                        <MaterialIcons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
+                                        <Text style={styles.retryText}>Refresh</Text>
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={styles.emptyTitle}>No trial assignments</Text>
-                                <Text style={styles.emptySubtitle}>
-                                    You don't have any trial assignments at the moment
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={onRefresh}
-                                    style={styles.retryButton}
-                                    activeOpacity={0.8}
-                                >
-                                    <MaterialIcons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
-                                    <Text style={styles.retryText}>Refresh</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </>
-                )}
-            </ScrollView>
+                            )}
+                        </>
+                    )}
+
+                    {/* Bottom padding */}
+                    <View style={styles.bottomPadding} />
+                </ScrollView>
+            </View>
         </SafeAreaView>
     );
 };
@@ -377,62 +375,43 @@ export default NewTrialAssign;
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: LIGHT_BG,
+        backgroundColor: '#075E4D',
     },
-    headerGradient: {
-        paddingTop: 10,
-        paddingBottom: 20,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+    mainContainer: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+        marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        marginTop: StatusBar.currentHeight || 0,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: '#075E4D',
+        paddingTop: Platform.OS === 'ios' ? 10 : 16,
     },
     backButton: {
-        padding: 8,
-        marginRight: 8,
-        borderRadius: 10,
-        // backgroundColor: 'rgba(255,255,255,0.1)',
-    },
-    headerTextContainer: {
-        flex: 1,
+        padding: 4,
     },
     title: {
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: '700',
         color: '#fff',
-        letterSpacing: 0.5,
+        textAlign: 'center',
     },
-    subtitle: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.85)',
-        marginTop: 4,
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    reloadButton: {
-        padding: 8,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+    refreshButton: {
+        padding: 4,
+        width: 40,
+        alignItems: 'center',
     },
-    disabledButton: {
-        opacity: 0.5,
-    },
-    rotatingIcon: {
-        transform: [{ rotate: '360deg' }],
-    },
-    scrollView: {
+    scrollContainer: {
         flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 40,
+        backgroundColor: LIGHT_BG,
     },
     summaryContainer: {
         flexDirection: 'row',
@@ -678,5 +657,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         letterSpacing: 0.5,
+    },
+    bottomPadding: {
+        height: 20,
     },
 });

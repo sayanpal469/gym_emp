@@ -1,5 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  StatusBar,
+  Platform,
+  ScrollView
+} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -16,54 +25,76 @@ const ClientDetails = ({ route, navigation }: any) => {
   console.log('Client Details:', client);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>CLIENT DETAILS</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
 
-      <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.actionBtn}
-          onPress={() => navigation.navigate('BMI', { memberId: client.member_id })}>
-          <Text style={styles.actionText}>BMI</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => console.log('DPR pressed')}>
-          <Text style={styles.actionText}>DPR</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Card */}
-      <View style={styles.card}>
-        <View style={styles.headerRow}>
-          <Text style={styles.name}>{client.member_name}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
-            <Ionicons name={statusInfo.icon} size={16} color={statusInfo.color} />
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Attendance.tsx */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>CLIENT DETAILS</Text>
+          <View style={styles.headerRight}>
+            {/* Empty view to balance the layout */}
+            <View style={styles.placeholderButton} />
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <ScrollView
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Action Buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.actionBtn}
+              onPress={() => navigation.navigate('BMI', { memberId: client.member_id })}>
+              <Text style={styles.actionText}>BMI</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => console.log('DPR pressed')}>
+              <Text style={styles.actionText}>DPR</Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.row}>
-          <Ionicons name="calendar-outline" size={18} color="#555" />
-          <Text style={styles.label}>Start Date:</Text>
-          <Text style={styles.value}>{client.start_date}</Text>
-        </View>
+          {/* Card */}
+          <View style={styles.card}>
+            <View style={styles.headerRow}>
+              <Text style={styles.name}>{client.member_name}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
+                <Ionicons name={statusInfo.icon} size={16} color={statusInfo.color} />
+                <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+              </View>
+            </View>
 
-        <View style={styles.row}>
-          <Ionicons name="calendar-outline" size={18} color="#555" />
-          <Text style={styles.label}>End Date:</Text>
-          <Text style={styles.value}>{client.end_date}</Text>
-        </View>
+            <View style={styles.divider} />
 
-        <View style={styles.row}>
-          <Ionicons name="pricetag-outline" size={18} color="#555" />
-          <Text style={styles.label}>Package:</Text>
-          <Text style={styles.value}>{client.package_name}</Text>
-        </View>
+            <View style={styles.row}>
+              <Ionicons name="calendar-outline" size={18} color="#555" />
+              <Text style={styles.label}>Start Date:</Text>
+              <Text style={styles.value}>{client.start_date}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Ionicons name="calendar-outline" size={18} color="#555" />
+              <Text style={styles.label}>End Date:</Text>
+              <Text style={styles.value}>{client.end_date}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Ionicons name="pricetag-outline" size={18} color="#555" />
+              <Text style={styles.label}>Package:</Text>
+              <Text style={styles.value}>{client.package_name}</Text>
+            </View>
+          </View>
+
+          {/* Bottom padding */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -72,23 +103,66 @@ const ClientDetails = ({ route, navigation }: any) => {
 export default ClientDetails;
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: 35,
-    paddingHorizontal: 16,
+    backgroundColor: '#075E4D',
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginLeft: 10,
-    color: '#222',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  placeholderButton: {
+    width: 40,
+    height: 40,
+  },
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  actionBtn: {
+    flex: 1,
+    backgroundColor: '#075E4D',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  actionText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
   card: {
     backgroundColor: '#fff',
@@ -143,23 +217,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#222',
   },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+  bottomPadding: {
+    height: 20,
   },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: '#075E4D',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  actionText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
 });

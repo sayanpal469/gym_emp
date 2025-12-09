@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,8 +21,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import LeaveRequestModal from '../modal/LeaveRequestModal';
 
-
 const screenWidth = Dimensions.get('window').width;
+const PRIMARY_COLOR = '#075E4D';
 
 interface LeaveRecord {
   id: number;
@@ -127,117 +128,129 @@ const LeaveScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-         <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-      {/* Header */}
-      <View style={styles.headerContainer}>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+      
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Attendance.tsx */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>YOUR LEAVES</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity 
-              onPress={onReload} 
-              style={[styles.actionButton, reloading && styles.actionButtonDisabled]}
+          <Text style={styles.title}>LEAVE REQUESTS</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={onReload}
+              style={styles.refreshButton}
               disabled={reloading}
             >
-              <MaterialIcons 
-                name="refresh" 
-                size={26} 
-                color={reloading ? "#ccc" : "#075E4D"} 
-                style={reloading ? styles.rotatingIcon : null}
-              />
+              {reloading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <MaterialIcons
+                  name="refresh"
+                  size={24}
+                  color="#fff"
+                />
+              )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowModal(true)} style={styles.actionButton}>
-              <MaterialIcons name="add-circle" size={30} color="#075E4D" />
+            <TouchableOpacity 
+              onPress={() => setShowModal(true)} 
+              style={styles.addButton}
+            >
+              <MaterialIcons name="add" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
-      </View>
 
-      {/* Content Container */}
-      <View style={styles.contentContainer}>
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <View style={styles.filterRow}>
-            {(['pending', 'approved', 'rejected'] as const).map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.filterTab, filter === tab && styles.activeTab]}
-                onPress={() => setFilter(tab)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.filterText, filter === tab && styles.activeTabText]}>
-                  {tab.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* List */}
-        {loading && leaves.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#075E4D" />
-            <Text style={styles.loadingText}>Loading leave requests...</Text>
-          </View>
-        ) : (
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#075E4D']}
-                tintColor="#075E4D"
-                progressBackgroundColor="#fff"
-              />
-            }
-          >
-            {filteredLeaves.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconContainer}>
-                  <MaterialCommunityIcons name="calendar-blank" size={64} color="#E0E0E0" />
-                </View>
-                <Text style={styles.emptyTitle}>No {filter} requests</Text>
-                <Text style={styles.emptySubtitle}>
-                  {filter === 'pending' 
-                    ? "You don't have any pending leave requests"
-                    : `No ${filter} leave requests found`
-                  }
-                </Text>
-                <TouchableOpacity onPress={onRefresh} style={styles.retryButton} activeOpacity={0.8}>
-                  <MaterialIcons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.retryText}>Refresh</Text>
+        <ScrollView 
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[PRIMARY_COLOR]}
+              tintColor={PRIMARY_COLOR}
+              progressBackgroundColor="#fff"
+            />
+          }
+        >
+          {/* Filter Tabs */}
+          <View style={styles.filterContainer}>
+            <View style={styles.filterRow}>
+              {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.filterTab, filter === tab && styles.activeTab]}
+                  onPress={() => setFilter(tab)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterText, filter === tab && styles.activeTabText]}>
+                    {tab.toUpperCase()}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            ) : (
-              filteredLeaves.map((leave, index) => {
-                const statusStyle = getStatusStyle(leave.status_name);
-                return (
-                  <View key={leave.id} style={styles.listItem}>
-                    <View style={styles.listIconBox}>
-                      <FontAwesome name="calendar" size={26} color="#075E4D" />
-                    </View>
-                    <View style={styles.leaveDetails}>
-                      <Text style={styles.reasonText}>{leave.reason}</Text>
-                      <Text style={styles.descriptionText}>{leave.description}</Text>
-                      <Text style={styles.durationText}>Duration: {leave.leave_for} days</Text>
-                      <Text style={styles.dateText}>From: {formatDate(leave.req_dt)}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
-                      <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 12 }}>
-                        {leave.status_name.toUpperCase()}
-                      </Text>
-                    </View>
+              ))}
+            </View>
+          </View>
+
+          {/* List */}
+          {loading && leaves.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+              <Text style={styles.loadingText}>Loading leave requests...</Text>
+            </View>
+          ) : (
+            <View style={styles.listContainer}>
+              {filteredLeaves.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <MaterialCommunityIcons name="calendar-blank" size={64} color="#E0E0E0" />
                   </View>
-                );
-              })
-            )}
-          </ScrollView>
-        )}
+                  <Text style={styles.emptyTitle}>No {filter} requests</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {filter === 'pending' 
+                      ? "You don't have any pending leave requests"
+                      : `No ${filter} leave requests found`
+                    }
+                  </Text>
+                  <TouchableOpacity onPress={onRefresh} style={styles.retryButton} activeOpacity={0.8}>
+                    <MaterialIcons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.retryText}>Refresh</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                filteredLeaves.map((leave, index) => {
+                  const statusStyle = getStatusStyle(leave.status_name);
+                  return (
+                    <View key={leave.id} style={styles.listItem}>
+                      <View style={styles.listIconBox}>
+                        <FontAwesome name="calendar" size={26} color={PRIMARY_COLOR} />
+                      </View>
+                      <View style={styles.leaveDetails}>
+                        <Text style={styles.reasonText}>{leave.reason}</Text>
+                        <Text style={styles.descriptionText}>{leave.description}</Text>
+                        <Text style={styles.durationText}>Duration: {leave.leave_for} days</Text>
+                        <Text style={styles.dateText}>From: {formatDate(leave.req_dt)}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
+                        <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 12 }}>
+                          {leave.status_name.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+          
+          {/* Bottom padding */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
       </View>
 
       {/* Leave Request Modal */}
@@ -253,61 +266,51 @@ const LeaveScreen = ({ navigation }: any) => {
 export default LeaveScreen;
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#FAFAFA',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#075E4D',
   },
-  headerContainer: {
-    backgroundColor: '#fff',
-    paddingTop: 35,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 16
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
   },
   backButton: {
     padding: 4,
-    borderRadius: 12,
   },
-  title: {  
-    fontSize: 26,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    flex: 1,
-    marginLeft: 1,
-    color: '#1A1A1A',
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
   },
-  headerActions: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  actionButton: {
+  refreshButton: {
     padding: 4,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    alignItems: 'center',
-    justifyContent: 'center',
     width: 40,
-    height: 40,
+    alignItems: 'center',
   },
-  actionButtonDisabled: {
-    backgroundColor: '#F0F0F0',
+  addButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'center',
   },
-  rotatingIcon: {
-    // You can add rotation animation here if needed
-  },
-  contentContainer: {
+  scrollContainer: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   filterContainer: {
     backgroundColor: '#fff',
@@ -349,9 +352,6 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#fff',
   },
-  scrollView: {
-    flex: 1,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   listContainer: { 
     paddingHorizontal: 16, 
-    paddingBottom: 80, 
+    paddingBottom: 20, 
     paddingTop: 8,
   },
   listItem: {
@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 80,
     paddingHorizontal: 40,
+    paddingVertical: 40,
   },
   emptyIconContainer: {
     backgroundColor: '#F8F9FA',
@@ -463,5 +464,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  bottomPadding: {
+    height: 20,
   },
 });

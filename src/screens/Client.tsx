@@ -8,6 +8,8 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -18,6 +20,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 
 const screenWidth = Dimensions.get('window').width;
+const PRIMARY_COLOR = '#075E4D';
 
 const Client = ({ navigation }: any) => {
   const { getAllPt, loading } = usePt();
@@ -169,150 +172,206 @@ const Client = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={26} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>CLIENT LIST</Text>
-      </View>
-
-      {/* Summary Cards */}
-      <View style={styles.summaryRow}>
-        {summaryCards.map((item, index) => (
-          <View key={index} style={styles.summaryCard}>
-            <MaterialCommunityIcons
-              name={item.icon}
-              size={24}
-              color="#ffffff"
-              style={{
-                marginBottom: 6,
-                backgroundColor: '#075E4D',
-                padding: 8,
-                borderRadius: 10,
-              }}
-            />
-            <Text style={styles.cardLabel}>{item.label}</Text>
-            <Text style={styles.cardValue}>{item.value}</Text>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+      
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Attendance.tsx */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>CLIENT LIST</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={fetchData}
+              style={styles.refreshButton}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <MaterialIcons
+                  name="refresh"
+                  size={24}
+                  color="#fff"
+                />
+              )}
+            </TouchableOpacity>
           </View>
-        ))}
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-        >
-          <TouchableOpacity
-            style={[styles.filterButton, getFilterButtonStyle('all')]}
-            onPress={() => setActiveFilter('all')}
-          >
-            <Text style={[styles.filterText, getFilterTextStyle('all')]}>
-              All ({clientList.length})
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.filterButton, getFilterButtonStyle('running')]}
-            onPress={() => setActiveFilter('running')}
-          >
-            <Text style={[styles.filterText, getFilterTextStyle('running')]}>
-              Running ({getStatusCount('running')})
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.filterButton, getFilterButtonStyle('upcoming')]}
-            onPress={() => setActiveFilter('upcoming')}
-          >
-            <Text style={[styles.filterText, getFilterTextStyle('upcoming')]}>
-              Upcoming ({getStatusCount('upcoming')})
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.filterButton, getFilterButtonStyle('expired')]}
-            onPress={() => setActiveFilter('expired')}
-          >
-            <Text style={[styles.filterText, getFilterTextStyle('expired')]}>
-              Expired ({getStatusCount('expired')})
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Client List */}
-      <Text style={styles.listTitle}>LIST</Text>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#075E4D" />
-          <Text style={styles.loadingText}>Loading clients...</Text>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.listContainer}>
-          {filteredClients.length === 0 ? (
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="account-off-outline" size={50} color="#ccc" />
-              <Text style={styles.emptyStateText}>
-                No {activeFilter === 'all' ? '' : activeFilter} clients found
-              </Text>
-              <TouchableOpacity 
-                style={styles.refreshButton}
-                onPress={fetchData}
+
+        {/* Main Content */}
+        <ScrollView 
+          style={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Summary Cards */}
+          <View style={styles.summaryRow}>
+            {summaryCards.map((item, index) => (
+              <View 
+                key={index} 
+                style={styles.summaryCard}
               >
-                <MaterialIcons name="refresh" size={20} color="#075E4D" />
-                <Text style={styles.refreshButtonText}>Refresh</Text>
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={24}
+                  color="#ffffff"
+                  style={{
+                    marginBottom: 6,
+                    backgroundColor: PRIMARY_COLOR,
+                    padding: 8,
+                    borderRadius: 10,
+                  }}
+                />
+                <Text style={styles.cardLabel}>
+                  {item.label}
+                </Text>
+                <Text style={styles.cardValue}>
+                  {item.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Filter Tabs */}
+          <View style={styles.filterContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollContent}
+            >
+              <TouchableOpacity
+                style={[styles.filterButton, getFilterButtonStyle('all')]}
+                onPress={() => setActiveFilter('all')}
+              >
+                <Text style={[styles.filterText, getFilterTextStyle('all')]}>
+                  All ({clientList.length})
+                </Text>
               </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.filterButton, getFilterButtonStyle('running')]}
+                onPress={() => setActiveFilter('running')}
+              >
+                <Text style={[styles.filterText, getFilterTextStyle('running')]}>
+                  Running ({getStatusCount('running')})
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.filterButton, getFilterButtonStyle('upcoming')]}
+                onPress={() => setActiveFilter('upcoming')}
+              >
+                <Text style={[styles.filterText, getFilterTextStyle('upcoming')]}>
+                  Upcoming ({getStatusCount('upcoming')})
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.filterButton, getFilterButtonStyle('expired')]}
+                onPress={() => setActiveFilter('expired')}
+              >
+                <Text style={[styles.filterText, getFilterTextStyle('expired')]}>
+                  Expired ({getStatusCount('expired')})
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* Client List */}
+          <Text style={styles.listTitle}>LIST</Text>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+              <Text style={styles.loadingText}>
+                Loading clients...
+              </Text>
             </View>
           ) : (
-            filteredClients.map((client, index) => {
-              const statusStyle = getStatusStyle(client.status);
-              const displayStatus = getDisplayStatus(client.package_status);
-              
-              return (
-                <TouchableOpacity
-                  key={client.id || index}
-                  style={[
-                    styles.listItem,
-                    client.renewThisMonth && styles.renewHighlight
-                  ]}
-                  onPress={() => navigation.navigate('ClientDetails', { client })}
-                >
-                  <View style={styles.listIconBox}>
-                    <FontAwesome name="user-circle" size={28} color="#075E4D" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.clientName}>{client.member_name}</Text>
-                    {/* <Text style={styles.clientPhone}>{client.phone || 'No phone'}</Text> */}
-                    <View style={styles.dateRow}>
-                      <Ionicons name="calendar-outline" size={16} color="#666" />
-                      <Text style={styles.dateText}>Start: {formatDate(client.start_date)}</Text>
-                    </View>
-                    <View style={styles.dateRow2}>
-                      <Ionicons name="calendar-outline" size={16} color="#666" />
-                      <Text style={styles.dateText}>End: {formatDate(client.end_date)}</Text>
-                    </View>
-                    {client.renewThisMonth && (
-                      <View style={styles.renewBadge}>
-                        <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#ff6b35" />
-                        <Text style={styles.renewText}>Renews this month</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
-                    <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 10 }}>
-                      {displayStatus}
+            <View style={styles.listContainer}>
+              {filteredClients.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons 
+                    name="account-off-outline" 
+                    size={50} 
+                    color="#ccc" 
+                  />
+                  <Text style={styles.emptyStateText}>
+                    No {activeFilter === 'all' ? '' : activeFilter} clients found
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.refreshListButton}
+                    onPress={fetchData}
+                  >
+                    <MaterialIcons name="refresh" size={20} color={PRIMARY_COLOR} />
+                    <Text style={styles.refreshButtonText}>
+                      Refresh
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                filteredClients.map((client, index) => {
+                  const statusStyle = getStatusStyle(client.status);
+                  const displayStatus = getDisplayStatus(client.package_status);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={client.id || index}
+                      style={[
+                        styles.listItem, 
+                        client.renewThisMonth && styles.renewHighlight
+                      ]}
+                      onPress={() => navigation.navigate('ClientDetails', { client })}
+                    >
+                      <View style={styles.listIconBox}>
+                        <FontAwesome name="user-circle" size={28} color={PRIMARY_COLOR} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.clientName}>
+                          {client.member_name}
+                        </Text>
+                        <View style={styles.dateRow}>
+                          <Ionicons name="calendar-outline" size={16} color="#666" />
+                          <Text style={styles.dateText}>
+                            Start: {formatDate(client.start_date)}
+                          </Text>
+                        </View>
+                        <View style={styles.dateRow2}>
+                          <Ionicons name="calendar-outline" size={16} color="#666" />
+                          <Text style={styles.dateText}>
+                            End: {formatDate(client.end_date)}
+                          </Text>
+                        </View>
+                        {client.renewThisMonth && (
+                          <View style={styles.renewBadge}>
+                            <MaterialCommunityIcons 
+                              name="alert-circle-outline" 
+                              size={14} 
+                              color="#ff6b35" 
+                            />
+                            <Text style={styles.renewText}>Renews this month</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
+                        <Text style={{ color: statusStyle.color, fontWeight: '600', fontSize: 10 }}>
+                          {displayStatus}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
           )}
         </ScrollView>
-      )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -322,19 +381,46 @@ export default Client;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 35,
+    backgroundColor: '#075E4D',
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginLeft: 10,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -383,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeFilterButton: {
-    backgroundColor: '#075E4D',
+    backgroundColor: PRIMARY_COLOR,
   },
   inactiveFilterButton: {
     backgroundColor: '#f2f2f2',
@@ -407,11 +493,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     marginTop: 20,
     marginBottom: 10,
+    color: '#000',
   },
   listContainer: {
     paddingHorizontal: 12,
-    paddingBottom: 80,
-    minHeight: 200,
+    paddingBottom: 20,
   },
   listItem: {
     flexDirection: 'row',
@@ -444,11 +530,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     color: '#222',
-  },
-  clientPhone: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 6,
   },
   dateRow: {
     flexDirection: 'row',
@@ -488,10 +569,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 50,
+    justifyContent: 'center',
+    paddingVertical: 50,
   },
   loadingText: {
     marginTop: 10,
@@ -510,7 +590,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
   },
-  refreshButton: {
+  refreshListButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
@@ -521,7 +601,7 @@ const styles = StyleSheet.create({
   },
   refreshButtonText: {
     fontSize: 14,
-    color: '#075E4D',
+    color: PRIMARY_COLOR,
     fontWeight: '600',
     marginLeft: 6,
   },

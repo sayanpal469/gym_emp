@@ -21,12 +21,14 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
 import { authClient } from '../services/api.clients';
 import { APIEndpoints } from '../services/api.endpoints';
 
 const { height } = Dimensions.get('window');
+const PRIMARY_COLOR = '#075E4D';
 
 interface ProfileData {
   first_name: string;
@@ -394,17 +396,25 @@ const Settings = ({ navigation }: any) => {
   if (isLoadingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={26} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Edit Profile</Text>
-          <View style={styles.saveButton} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#075E4D" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+        <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+        {/* Header - Matching Client.tsx */}
+        <View style={styles.mainContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.title}>EDIT PROFILE</Text>
+            <View style={styles.headerRight}>
+              <View style={styles.refreshButton} />
+            </View>
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#075E4D" />
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -412,133 +422,150 @@ const Settings = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={26} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSaveProfile} style={styles.saveButton} disabled={isSaving}>
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#075E4D" />
-          ) : (
-            <Text style={styles.saveText}>Save</Text>
-          )}
-        </TouchableOpacity>
+      <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
+      
+      {/* Main Container */}
+      <View style={styles.mainContainer}>
+        {/* Header - Matching Client.tsx */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>EDIT PROFILE</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={handleSaveProfile}
+              style={styles.refreshButton}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <MaterialIcons
+                  name="save"
+                  size={24}
+                  color="#fff"
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {/* Profile Image Section - Replaced with Initials */}
+            <View style={styles.profileImageContainer}>
+              <View style={styles.initialsContainer}>
+                <Text style={styles.initialsText}>
+                  {getUserInitials(profileData?.first_name || '', profileData?.last_name || '')}
+                </Text>
+              </View>
+              <Text style={styles.changePhotoText}>{userData.name}</Text>
+              <Text style={styles.roleText}>{profileData?.department || 'Employee'}</Text>
+            </View>
+
+            {/* Form Section */}
+            <View style={styles.formContainer}>
+              {/* Name Field - Made non-editable */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <View style={[styles.inputWrapper, styles.disabledInput]}>
+                  <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, styles.disabledText]}
+                    value={userData.name}
+                    editable={false}
+                    placeholder="Enter your name"
+                  />
+                </View>
+              </View>
+
+              {/* Email Field */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email Address</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  fieldErrors.email ? styles.inputError : {}
+                ]}>
+                  <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={userData.email}
+                    onChangeText={(text) => {
+                      setUserData({ ...userData, email: text });
+                      if (fieldErrors.email) {
+                        setFieldErrors({ ...fieldErrors, email: '' });
+                      }
+                    }}
+                    placeholder={profileData?.email || "Enter your email"}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                {fieldErrors.email ? (
+                  <Text style={styles.errorText}>{fieldErrors.email}</Text>
+                ) : (
+                  <Text style={styles.noteText}>Leave blank if you don't want to change email</Text>
+                )}
+              </View>
+
+              {/* Phone Field */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Phone Number</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  fieldErrors.phone ? styles.inputError : {}
+                ]}>
+                  <Feather name="phone" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={userData.phone}
+                    onChangeText={(text) => {
+                      setUserData({ ...userData, phone: text });
+                      if (fieldErrors.phone) {
+                        setFieldErrors({ ...fieldErrors, phone: '' });
+                      }
+                    }}
+                    placeholder={profileData?.phone || "Enter your phone number"}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
+                </View>
+                {fieldErrors.phone ? (
+                  <Text style={styles.errorText}>{fieldErrors.phone}</Text>
+                ) : (
+                  <Text style={styles.noteText}>Leave blank if you don't want to change phone</Text>
+                )}
+              </View>
+
+              {/* Change Password Button */}
+              <TouchableOpacity
+                style={styles.changePasswordButton}
+                onPress={openPasswordDrawer}
+              >
+                <Ionicons name="lock-closed-outline" size={22} color="#075E4D" />
+                <Text style={styles.changePasswordText}>Change Password</Text>
+                <MaterialIcons name="keyboard-arrow-right" size={24} color="#075E4D" />
+              </TouchableOpacity>
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
+                <MaterialIcons name="logout" size={22} color="#FF3B30" />
+                <Text style={styles.logoutText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Profile Image Section - Replaced with Initials */}
-          <View style={styles.profileImageContainer}>
-            <View style={styles.initialsContainer}>
-              <Text style={styles.initialsText}>
-                {getUserInitials(profileData?.first_name || '', profileData?.last_name || '')}
-              </Text>
-            </View>
-            <Text style={styles.changePhotoText}>{userData.name}</Text>
-            <Text style={styles.roleText}>{profileData?.department || 'Employee'}</Text>
-          </View>
-
-          {/* Form Section */}
-          <View style={styles.formContainer}>
-            {/* Name Field - Made non-editable */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <View style={[styles.inputWrapper, styles.disabledInput]}>
-                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, styles.disabledText]}
-                  value={userData.name}
-                  editable={false}
-                  placeholder="Enter your name"
-                />
-              </View>
-            </View>
-
-            {/* Email Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={[
-                styles.inputWrapper,
-                fieldErrors.email ? styles.inputError : {}
-              ]}>
-                <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={userData.email}
-                  onChangeText={(text) => {
-                    setUserData({ ...userData, email: text });
-                    if (fieldErrors.email) {
-                      setFieldErrors({ ...fieldErrors, email: '' });
-                    }
-                  }}
-                  placeholder={profileData?.email || "Enter your email"}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              {fieldErrors.email ? (
-                <Text style={styles.errorText}>{fieldErrors.email}</Text>
-              ) : (
-                <Text style={styles.noteText}>Leave blank if you don't want to change email</Text>
-              )}
-            </View>
-
-            {/* Phone Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <View style={[
-                styles.inputWrapper,
-                fieldErrors.phone ? styles.inputError : {}
-              ]}>
-                <Feather name="phone" size={20} color="#666" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  value={userData.phone}
-                  onChangeText={(text) => {
-                    setUserData({ ...userData, phone: text });
-                    if (fieldErrors.phone) {
-                      setFieldErrors({ ...fieldErrors, phone: '' });
-                    }
-                  }}
-                  placeholder={profileData?.phone || "Enter your phone number"}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-              {fieldErrors.phone ? (
-                <Text style={styles.errorText}>{fieldErrors.phone}</Text>
-              ) : (
-                <Text style={styles.noteText}>Leave blank if you don't want to change phone</Text>
-              )}
-            </View>
-
-            {/* Change Password Button */}
-            <TouchableOpacity
-              style={styles.changePasswordButton}
-              onPress={openPasswordDrawer}
-            >
-              <Ionicons name="lock-closed-outline" size={22} color="#075E4D" />
-              <Text style={styles.changePasswordText}>Change Password</Text>
-              <MaterialIcons name="keyboard-arrow-right" size={24} color="#075E4D" />
-            </TouchableOpacity>
-
-            {/* Logout Button */}
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <MaterialIcons name="logout" size={22} color="#FF3B30" />
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* Password Change Drawer */}
       <Modal
@@ -674,39 +701,45 @@ const Settings = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#075E4D',
   },
-  container: {
+  mainContainer: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
+    backgroundColor: '#F9FAFB',
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    marginTop: 16
+    paddingVertical: 16,
+    backgroundColor: '#075E4D',
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
   },
   backButton: {
     padding: 4,
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
   },
-  saveButton: {
-    padding: 8,
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  saveText: {
-    color: '#075E4D',
-    fontSize: 16,
-    fontWeight: '600',
+  refreshButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'center',
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   profileImageContainer: {
     alignItems: 'center',
@@ -879,11 +912,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Add loading styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
   loadingText: {
     marginTop: 12,

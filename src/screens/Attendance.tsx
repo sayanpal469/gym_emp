@@ -11,6 +11,7 @@ import {
   RefreshControl,
   StatusBar,
   Animated,
+  Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -338,7 +339,7 @@ const Attendance = ({ navigation }: any) => {
         },
         {
           label: 'Late Absent',
-          value: summary?.late_absent.toString(),
+          value: summary?.late_absent?.toString() || '0',
           icon: 'calendar-clock',
           iconType: 'MaterialCommunityIcons',
           color: '#FF9800',
@@ -346,7 +347,7 @@ const Attendance = ({ navigation }: any) => {
         },
         {
           label: 'Late',
-          value: summary?.late?.toString(),
+          value: summary?.late?.toString() || '0',
           icon: 'clock-alert',
           iconType: 'MaterialCommunityIcons',
           color: '#FF5722',
@@ -461,186 +462,139 @@ const Attendance = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#075E4D" barStyle="light-content" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>ATTENDANCE LIST</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={toggleDrawer}
-            style={styles.payrollButton}
-          >
-            <MaterialCommunityIcons name="cash-multiple" size={20} color="#fff" />
-            <Text style={styles.payrollButtonText}>Payroll</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={onRefresh}
-            style={styles.refreshButton}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <MaterialIcons
-                name="refresh"
-                size={24}
-                color="#fff"
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Payroll Drawer (Bottom Sheet) */}
-      {drawerVisible && (
-        <View style={styles.drawerOverlay}>
-          <TouchableOpacity
-            style={styles.drawerBackdrop}
-            activeOpacity={1}
-            onPress={toggleDrawer}
-          />
-          <Animated.View
-            style={[
-              styles.drawerContainer,
-              {
-                opacity: drawerOpacity,
-                transform: [{ translateY: drawerTranslateY }]
-              }
-            ]}
-          >
-            <View style={styles.drawerHandle} />
-            <View style={styles.drawerContent}>
-              <View style={styles.drawerHeader}>
-                <MaterialCommunityIcons name="cash-multiple" size={24} color="#fff" />
-                <Text style={styles.drawerTitle}>Payroll Details</Text>
-                <TouchableOpacity onPress={toggleDrawer} style={styles.drawerCloseButton}>
-                  <MaterialIcons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView 
-                style={styles.drawerBody}
-                showsVerticalScrollIndicator={true}
-                bounces={true}
-                contentContainerStyle={styles.drawerScrollContent}
-              >
-                {getPayrollItems().map((item, index) => (
-                  <View key={index} style={styles.payrollItem}>
-                    <View style={[styles.payrollIconContainer, { backgroundColor: item.color }]}>
-                      <MaterialCommunityIcons name={item.icon} size={20} color="#fff" />
-                    </View>
-                    <View style={styles.payrollInfo}>
-                      <Text style={styles.payrollLabel}>{item.label}</Text>
-                      <Text style={[
-                        styles.payrollValue,
-                        item.isAmount && styles.payrollAmount
-                      ]}>
-                        {item.isAmount ? '₹' : ''}{item.value}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-                
-              </ScrollView>
-            </View>
-          </Animated.View>
-        </View>
-      )}
-
+      
       {/* Main Content Container */}
       <View style={styles.mainContainer}>
-        {/* Month and Shift Info */}
-        <View style={styles.infoSection}>
-          {responseData && (
-            <>
-              <View style={styles.monthContainer}>
-                <MaterialCommunityIcons name="calendar-month" size={24} color="#075E4D" />
-                <Text style={styles.monthText}>{responseData.month}</Text>
-              </View>
-              <View style={styles.shiftContainer}>
-                <View style={styles.shiftItem}>
-                  <MaterialCommunityIcons name="clock-start" size={18} color="#4CAF50" />
-                  <Text style={styles.shiftText}>Shift: {formatShiftTime(responseData.shift_start)}</Text>
-                </View>
-                <View style={styles.shiftItem}>
-                  <MaterialCommunityIcons name="clock-end" size={18} color="#F44336" />
-                  <Text style={styles.shiftText}>To: {formatShiftTime(responseData.shift_end)}</Text>
-                </View>
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Summary Cards */}
-        <View style={styles.summarySection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.summaryContent}
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            {getSummaryItems().map((item, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.summaryCard,
-                  {
-                    backgroundColor: item.bgColor,
-                    marginRight: index === getSummaryItems().length - 1 ? 0 : 12
-                  }
-                ]}
-              >
-                <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
-                  {renderIcon(item.iconType, item.icon, '#ffffff', 20)}
-                </View>
-                <Text style={styles.cardValue}>{item.value}</Text>
-                <Text style={styles.cardLabel}>{item.label}</Text>
-              </View>
-            ))}
-          </ScrollView>
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>ATTENDANCE LIST</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={onRefresh}
+              style={styles.refreshButton}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <MaterialIcons
+                  name="refresh"
+                  size={24}
+                  color="#fff"
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Attendance List Section */}
-        <View style={styles.listSection}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>DAILY ATTENDANCE</Text>
-            <Text style={styles.listSubtitle}>
-              Total Days: {responseData?.summary?.total_days_in_month || '0'}
-            </Text>
+        {/* Main Scrollable Content */}
+        <ScrollView 
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#075E4D']}
+              tintColor="#075E4D"
+            />
+          }
+        >
+          {/* Month and Shift Info */}
+          <View style={styles.infoSection}>
+            {responseData && (
+              <>
+                <View style={styles.monthContainer}>
+                  <MaterialCommunityIcons name="calendar-month" size={24} color="#075E4D" />
+                  <Text style={styles.monthText}>{responseData.month}</Text>
+                </View>
+                <View style={styles.shiftContainer}>
+                  <View style={styles.shiftItem}>
+                    <MaterialCommunityIcons name="clock-start" size={18} color="#4CAF50" />
+                    <Text style={styles.shiftText}>Shift: {formatShiftTime(responseData.shift_start)}</Text>
+                  </View>
+                  <View style={styles.shiftItem}>
+                    <MaterialCommunityIcons name="clock-end" size={18} color="#F44336" />
+                    <Text style={styles.shiftText}>To: {formatShiftTime(responseData.shift_end)}</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
 
-          {loading && attendanceData.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#075E4D" />
-              <Text style={styles.loadingText}>Loading attendance data...</Text>
-            </View>
-          ) : attendanceData.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No attendance records found</Text>
-              <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
+          {/* Summary Cards */}
+          <View style={styles.summarySection}>
             <ScrollView
-              style={styles.listScrollView}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={['#075E4D']}
-                  tintColor="#075E4D"
-                />
-              }
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.summaryContent}
             >
-              {attendanceData.map((record, index) => {
+              {getSummaryItems().map((item, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.summaryCard,
+                    {
+                      backgroundColor: item.bgColor,
+                      marginRight: index === getSummaryItems().length - 1 ? 0 : 12
+                    }
+                  ]}
+                >
+                  <View style={[styles.cardIconContainer, { backgroundColor: item.color }]}>
+                    {renderIcon(item.iconType, item.icon, '#ffffff', 20)}
+                  </View>
+                  <Text style={styles.cardValue}>{item.value}</Text>
+                  <Text style={styles.cardLabel}>{item.label}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Payroll Button Section */}
+          <View style={styles.payrollButtonSection}>
+            <TouchableOpacity
+              onPress={toggleDrawer}
+              style={styles.payrollButton}
+              activeOpacity={0.8}
+            >
+              <View style={styles.payrollButtonContent}>
+                <MaterialCommunityIcons name="cash-multiple" size={24} color="#fff" />
+                <Text style={styles.payrollButtonText}>View Payroll Details</Text>
+                <MaterialIcons name="chevron-right" size={24} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Attendance List Section */}
+          <View style={styles.listSection}>
+            <View style={styles.listHeader}>
+              <Text style={styles.listTitle}>DAILY ATTENDANCE</Text>
+              <Text style={styles.listSubtitle}>
+                Total Days: {responseData?.summary?.total_days_in_month || '0'}
+              </Text>
+            </View>
+
+            {loading && attendanceData.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#075E4D" />
+                <Text style={styles.loadingText}>Loading attendance data...</Text>
+              </View>
+            ) : attendanceData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
+                <Text style={styles.emptyText}>No attendance records found</Text>
+                <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              attendanceData.map((record, index) => {
                 const statusConfig = getStatusConfig(record);
 
                 return (
@@ -689,10 +643,67 @@ const Attendance = ({ navigation }: any) => {
                     </View>
                   </View>
                 );
-              })}
-            </ScrollView>
-          )}
-        </View>
+              })
+            )}
+          </View>
+
+          {/* Bottom padding */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+
+        {/* Payroll Drawer (Bottom Sheet) */}
+        {drawerVisible && (
+          <View style={styles.drawerOverlay}>
+            <TouchableOpacity
+              style={styles.drawerBackdrop}
+              activeOpacity={1}
+              onPress={toggleDrawer}
+            />
+            <Animated.View
+              style={[
+                styles.drawerContainer,
+                {
+                  opacity: drawerOpacity,
+                  transform: [{ translateY: drawerTranslateY }]
+                }
+              ]}
+            >
+              <View style={styles.drawerHandle} />
+              <View style={styles.drawerContent}>
+                <View style={styles.drawerHeader}>
+                  <MaterialCommunityIcons name="cash-multiple" size={24} color="#fff" />
+                  <Text style={styles.drawerTitle}>Payroll Details</Text>
+                  <TouchableOpacity onPress={toggleDrawer} style={styles.drawerCloseButton}>
+                    <MaterialIcons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  style={styles.drawerBody}
+                  showsVerticalScrollIndicator={true}
+                  bounces={true}
+                  contentContainerStyle={styles.drawerScrollContent}
+                >
+                  {getPayrollItems().map((item, index) => (
+                    <View key={index} style={styles.payrollItem}>
+                      <View style={[styles.payrollIconContainer, { backgroundColor: item.color }]}>
+                        <MaterialCommunityIcons name={item.icon} size={20} color="#fff" />
+                      </View>
+                      <View style={styles.payrollInfo}>
+                        <Text style={styles.payrollLabel}>{item.label}</Text>
+                        <Text style={[
+                          styles.payrollValue,
+                          item.isAmount && styles.payrollAmount
+                        ]}>
+                          {item.isAmount ? '₹' : ''}{item.value}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            </Animated.View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -703,7 +714,12 @@ export default Attendance;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#075E4D',
+  },
+  mainContainer: {
+    flex: 1,
     backgroundColor: '#F9FAFB',
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     flexDirection: 'row',
@@ -712,12 +728,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: '#075E4D',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    marginTop: StatusBar.currentHeight || 0,
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
   },
   backButton: {
     padding: 4,
@@ -732,26 +743,275 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  payrollButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  payrollButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
   refreshButton: {
     padding: 4,
     width: 40,
     alignItems: 'center',
   },
+  scrollContainer: {
+    flex: 1,
+  },
+  infoSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  monthContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  monthText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 10,
+  },
+  shiftContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  shiftItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  shiftText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  summarySection: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  summaryContent: {
+    paddingHorizontal: 16,
+  },
+  summaryCard: {
+    width: screenWidth * 0.32,
+    minWidth: 120,
+    maxWidth: 140,
+    height: 110,
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  cardValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  cardLabel: {
+    fontSize: 11,
+    textAlign: 'center',
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  payrollButtonSection: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+  },
+  payrollButton: {
+    backgroundColor: '#075E4D',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  payrollButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  payrollButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+    marginLeft: 12,
+  },
+  listSection: {
+    flex: 1,
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  listTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  listSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  listItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dateContainer: {
+    alignItems: 'center',
+    marginRight: 16,
+    minWidth: 40,
+  },
+  dayText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  dateNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#075E4D',
+  },
+  listContentContainer: {
+    flex: 1,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  timeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    marginBottom: 4,
+  },
+  dateText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  inOutText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  statusContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    minWidth: 70,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    justifyContent: 'center',
+    minWidth: 70,
+  },
+  statusIcon: {
+    marginRight: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    paddingTop: 60,
+    paddingBottom: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  emptyContainer: {
+    paddingTop: 60,
+    paddingBottom: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#075E4D',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bottomPadding: {
+    height: 20,
+  },
+  // Drawer styles
   drawerOverlay: {
     position: 'absolute',
     top: 0,
@@ -863,301 +1123,5 @@ const styles = StyleSheet.create({
   payrollAmount: {
     color: '#075E4D',
     fontSize: 22,
-  },
-  additionalInfo: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  drawerFooter: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    alignItems: 'center',
-  },
-  footerNote: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  mainContainer: {
-    flex: 1,
-  },
-  infoSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  monthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  monthText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginLeft: 10,
-  },
-  shiftContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  shiftItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  shiftText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  summarySection: {
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  summaryContent: {
-    paddingHorizontal: 16,
-  },
-  summaryCard: {
-    width: screenWidth * 0.32,
-    minWidth: 120,
-    maxWidth: 140,
-    height: 110,
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  cardValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1F2937',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  cardLabel: {
-    fontSize: 11,
-    textAlign: 'center',
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  listSection: {
-    flex: 1,
-    paddingTop: 16,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  listSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  listScrollView: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  listItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dateContainer: {
-    alignItems: 'center',
-    marginRight: 16,
-    minWidth: 40,
-  },
-  dayText: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  dateNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#075E4D',
-  },
-  listContentContainer: {
-    flex: 1,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  timeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 4,
-  },
-  dateText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  inOutText: {
-    marginLeft: 6,
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  statusContainer: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    minWidth: 70,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    justifyContent: 'center',
-    minWidth: 70,
-  },
-  statusIcon: {
-    marginRight: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: '#075E4D',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
